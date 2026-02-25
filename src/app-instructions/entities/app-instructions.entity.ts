@@ -4,7 +4,7 @@ import { User } from "src/users/entities/user.entity";
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm";
 
 @Entity('rillo_app_instructions')
-export class ChatRequest {
+export class AppInstruction {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
