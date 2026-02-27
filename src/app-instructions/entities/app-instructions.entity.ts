@@ -1,10 +1,10 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { AppInstructionsEnum } from "src/common/enums/app-instructions.enum";
 import { User } from "src/users/entities/user.entity";
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, DeleteDateColumn } from "typeorm";
 
 @Entity('rillo_app_instructions')
-export class AppInstruction {
+export class AppInstructions {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
@@ -22,6 +22,9 @@ export class AppInstruction {
 
     @UpdateDateColumn()
     updated_at: Date;
+
+    @DeleteDateColumn()
+    deleted_at: Date;
 
     /* Relation */
     @ApiProperty({ description: 'File object', type: () => User, })

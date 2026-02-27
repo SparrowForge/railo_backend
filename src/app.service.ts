@@ -20,6 +20,7 @@ import { PostLike } from './post/entities/post-like.entity';
 import { Posts } from './post/entities/post.entity';
 import { NotificationRecord } from './notification-record/entities/notification-record.entity';
 import { UserToFirebaseTokenMap } from './notifications/entity/userToFirebaseTokenMap.entity';
+import { AppInstructions } from './app-instructions/entities/app-instructions.entity';
 
 @Injectable()
 
@@ -55,7 +56,8 @@ export class AppService implements TypeOrmOptionsFactory {
         PostLike,
         Posts,
         NotificationRecord,
-        UserToFirebaseTokenMap
+        UserToFirebaseTokenMap,
+        AppInstructions
       ],
       synchronize: false, // Never use synchronize in production
       logging: isDevelopment,

@@ -1,0 +1,17 @@
+import { ApiProperty } from "@nestjs/swagger";
+import { IsEnum, IsNotEmpty, IsString } from "class-validator";
+import { AppInstructionsEnum } from "src/common/enums/app-instructions.enum";
+import { Entity } from "typeorm";
+
+@Entity('rillo_app_instructions')
+export class UpdateAppInstructionDto {
+    @ApiProperty({ description: `AppInstructionsEnum must be within ${Object.values(AppInstructionsEnum).join(', ')}`, enum: AppInstructionsEnum, example: AppInstructionsEnum.DistanceLevelsInRillo, })
+    @IsEnum(AppInstructionsEnum, { message: `AppInstructionsEnum must be within ${Object.values(AppInstructionsEnum).join(', ')}` })
+    @IsNotEmpty()
+    particulars: AppInstructionsEnum;
+
+    @IsString()
+    @IsNotEmpty()
+    instruction: string;
+}
+
