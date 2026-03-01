@@ -137,7 +137,7 @@ export class FilesController {
     file: any, // Using any for now to avoid type issues
     @Body() uploadFileDto: UploadFileDto,
     @Req() req: Request,
-  ): Promise<FileResponseDto> {
+  ): Promise<BaseResponseDto<FileResponseDto>> {
     if (!req.headers["x-api-key"]) {
       throw new UnauthorizedException();
     }
@@ -146,10 +146,8 @@ export class FilesController {
       throw new UnauthorizedException();
     }
 
-
-    // const uploadedBy = 1;
-    console.log("file");
-    return await this.filesService.uploadFile(file, uploadFileDto);
+    const res = await this.filesService.uploadFile(file, uploadFileDto);
+    return new BaseResponseDto(res, 'File uploaded successfully');
   }
 
   @Get()
