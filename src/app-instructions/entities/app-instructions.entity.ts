@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { AppInstructionsEnum } from "../../common/enums/app-instructions.enum";
-import { User } from "src/users/entities/user.entity";
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, DeleteDateColumn } from "typeorm";
+import { AppInstructionsEnum } from "./app-instructions.enum";
+import { User } from "src/users/entities/user.entity";
 
 @Entity('rillo_app_instructions')
 export class AppInstructions {

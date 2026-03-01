@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsEnum, IsNotEmpty, IsString } from "class-validator";
-import { AppInstructionsEnum } from "../../common/enums/app-instructions.enum";
+import { AppInstructionsEnum } from "../entities/app-instructions.enum";
 import { Entity } from "typeorm";
 
 @Entity('rillo_app_instructions')
