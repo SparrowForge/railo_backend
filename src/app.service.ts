@@ -21,6 +21,8 @@ import { Posts } from './post/entities/post.entity';
 import { NotificationRecord } from './notification-record/entities/notification-record.entity';
 import { UserToFirebaseTokenMap } from './notifications/entity/userToFirebaseTokenMap.entity';
 import { AppInstructions } from './app-instructions/entities/app-instructions.entity';
+import { Story } from './story/entities/story.entity';
+import { StoryView } from './story/entities/story_view.entity';
 
 @Injectable()
 
@@ -57,7 +59,9 @@ export class AppService implements TypeOrmOptionsFactory {
         Posts,
         NotificationRecord,
         UserToFirebaseTokenMap,
-        AppInstructions
+        AppInstructions,
+        Story,
+        StoryView
       ],
       synchronize: false, // Never use synchronize in production
       logging: isDevelopment,

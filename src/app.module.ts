@@ -21,6 +21,8 @@ import { ChatModule } from './chat/chat.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { NotificationRecordModule } from './notification-record/notification-record.module';
 import { AppInstructionsModule } from './app-instructions/app-instructions.module';
+import { StoryModule } from './story/story.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -32,6 +34,7 @@ import { AppInstructionsModule } from './app-instructions/app-instructions.modul
     TypeOrmModule.forRootAsync({
       useClass: AppService,
     }),
+    ScheduleModule.forRoot(),
     AuditModule,
     AuthModule,
     CommandModule,
@@ -45,7 +48,8 @@ import { AppInstructionsModule } from './app-instructions/app-instructions.modul
     ChatModule,
     NotificationsModule,
     NotificationRecordModule,
-    AppInstructionsModule
+    AppInstructionsModule,
+    StoryModule,
   ],
   controllers: [AppController],
   providers: [
