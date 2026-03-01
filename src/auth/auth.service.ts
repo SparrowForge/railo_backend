@@ -144,6 +144,7 @@ export class AuthService {
     );
   }
 
+
   /**
    * Step 2: Verify the code sent to email
    */
