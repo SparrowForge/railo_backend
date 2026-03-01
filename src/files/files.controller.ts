@@ -4,6 +4,7 @@
 import {
   Body,
   Controller,
+  Delete,
   FileTypeValidator,
   Get,
   HttpCode,
@@ -384,9 +385,10 @@ export class FilesController {
     }
   }
 
-  @Post('header-data-test')
-  @Public()
-  getHeaderDataInReturn(@Req() req: Request) {
-    return req.headers["x-api-key"];
+  @Delete(':id')
+  async getHeaderDataInReturn(@Param('id') id: number) {
+    return await this.filesService.deleteFile(id);
   }
+
+
 }

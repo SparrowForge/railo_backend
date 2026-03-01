@@ -1,4 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository, LessThan } from 'typeorm';
@@ -30,19 +32,21 @@ export class StoryService {
         @InjectRepository(StoryLike)
         private readonly storyLikeRepo: Repository<StoryLike>) { }
 
-    async createStory(userId: string, dto: CreateStoryDto): Promise<Story> {
+    async createStory(userId: string, dto: CreateStoryDto): Promise<Story[]> {
         const expiresAt = new Date();
         expiresAt.setHours(expiresAt.getHours() + 24);
 
-        const story = this.storyRepo.create({
-            user_id: userId,
-            file_id: dto.file_id,
-            visibility: dto.visibility,
-            expires_at: expiresAt,
-        });
+        const stories = dto.file_id.map((fileId) =>
+            this.storyRepo.create({
+                user_id: userId,
+                file_id: fileId,
+                visibility: dto.visibility,
+                expires_at: expiresAt,
+            }),
+        );
 
-        const savedStory = await this.storyRepo.save(story);
-        return savedStory;
+        const savedStories = await this.storyRepo.save(stories);
+        return savedStories;
     }
 
     async viewStory(storyId: string, viewerId: string): Promise<{
@@ -59,29 +63,23 @@ export class StoryService {
             throw new NotFoundException('Story not found');
         }
 
-        const existing = await this.storyViewRepo.findOne({
-            where: { story_id: storyId, viewer_id: viewerId },
-        });
+        const insertResult = await this.storyViewRepo
+            .createQueryBuilder()
+            .insert()
+            .into(StoryView)
+            .values({
+                story_id: storyId,
+                viewer_id: viewerId,
+            })
+            .orIgnore()
+            .execute();
 
-        if (!existing) {
-            let inserted = false;
-            try {
-                const view = this.storyViewRepo.create({
-                    story_id: storyId,
-                    viewer_id: viewerId,
-                });
+        const inserted =
+            (insertResult.identifiers?.length ?? 0) > 0 ||
+            (insertResult.generatedMaps?.length ?? 0) > 0;
 
-                await this.storyViewRepo.save(view);
-                inserted = true;
-            } catch (error: any) {
-                if (error?.code !== '23505') {
-                    throw error;
-                }
-            }
-
-            if (inserted) {
-                await this.storyRepo.increment({ id: storyId }, 'view_count', 1);
-            }
+        if (inserted) {
+            await this.storyRepo.increment({ id: storyId }, 'view_count', 1);
         }
 
         return this.getStoryStats(storyId, viewerId);

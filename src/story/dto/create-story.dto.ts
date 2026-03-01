@@ -1,10 +1,13 @@
 import { StoryVisibilityEnum } from "../entities/story_visibility.enum";
-import { IsEnum, IsNotEmpty, IsNumber } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsEnum, IsInt, IsNotEmpty } from "class-validator";
 
 export class CreateStoryDto {
-    @IsNumber()
+    @IsArray()
+    @ArrayMinSize(1)
+    @ArrayMaxSize(3)
+    @IsInt({ each: true })
     @IsNotEmpty()
-    file_id: number;
+    file_id: number[];
 
     @IsEnum(StoryVisibilityEnum, { message: `visibility must be one of: ${Object.values(StoryVisibilityEnum).join(', ')}`, })
     @IsNotEmpty()

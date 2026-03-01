@@ -29,15 +29,15 @@ export class StoryController {
 
     @Post()
     @ApiOperation({
-        summary: 'Create a new story',
-        description: 'Creates a new story for the authenticated user. Requires authentication.',
+        summary: 'Create story entries',
+        description: 'Creates up to 3 stories for the authenticated user from provided file IDs. Requires authentication.',
     })
-    @ApiResponse({ status: 201, description: 'Story created successfully', type: BaseResponseDto<Story>, })
+    @ApiResponse({ status: 201, description: 'Stories created successfully', type: BaseResponseDto<Story[]>, })
     @ApiResponse({ status: 400, description: 'Bad request - validation error', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
     async createStory(@CurrentUser() user: AuthUser, @Body() dto: CreateStoryDto) {
-        const story = await this.storyService.createStory(user.userId, dto);
-        return new BaseResponseDto(story, 'Story created successfully');
+        const stories = await this.storyService.createStory(user.userId, dto);
+        return new BaseResponseDto(stories, 'Stories created successfully');
     }
 
     @Get()

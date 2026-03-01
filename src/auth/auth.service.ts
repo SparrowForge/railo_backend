@@ -137,7 +137,9 @@ export class AuthService {
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
     await this.passwordResetService.requestPasswordReset(forgotPasswordDto);
     return new BaseResponseDto(
-      null,
+      {
+        expires_in_seconds: 15 * 60,
+      },
       'If the email exists, a verification code has been sent',
     );
   }
