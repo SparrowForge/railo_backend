@@ -4,6 +4,7 @@ import {
   IsEnum,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   MaxLength,
 } from 'class-validator';
@@ -51,5 +52,6 @@ export class UploadFileDto {
     example: "123",
   })
   @IsString()
+  @IsOptional()
   uploadedBy: string;
 }
