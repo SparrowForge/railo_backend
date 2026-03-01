@@ -74,15 +74,29 @@ export class StoryController {
     @Post(':id/view')
     @ApiOperation({ summary: 'Mark story as viewed', description: 'Marks a story as viewed by the authenticated user.', })
     @ApiParam({ name: 'id', description: 'Story ID (uuid)', example: 1, type: 'number', })
-    @ApiResponse({ status: 200, description: 'Story viewed successfully', type: BaseResponseDto<null>, })
+    @ApiResponse({ status: 200, description: 'Story viewed successfully', })
     @ApiResponse({ status: 404, description: 'Story not found', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
     async viewStory(
         @CurrentUser() user: AuthUser,
         @Param('id', ParseUUIDPipe) storyId: string,
     ) {
-        await this.storyService.viewStory(storyId, user.userId);
-        return new BaseResponseDto(null, 'Story viewed successfully');
+        const storyStats = await this.storyService.viewStory(storyId, user.userId);
+        return new BaseResponseDto(storyStats, 'Story viewed successfully');
+    }
+
+    @Post(':id/toggle-like')
+    @ApiOperation({ summary: 'Toggle like a story', description: 'Likes or unlikes a story for the authenticated user.', })
+    @ApiParam({ name: 'id', description: 'Story ID (uuid)', example: 1, type: 'number', })
+    @ApiResponse({ status: 200, description: 'Story like toggled successfully', })
+    @ApiResponse({ status: 404, description: 'Story not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async toggleLikeStory(
+        @CurrentUser() user: AuthUser,
+        @Param('id', ParseUUIDPipe) storyId: string,
+    ) {
+        const likeStatus = await this.storyService.toggleLike(storyId, user.userId);
+        return new BaseResponseDto(likeStatus, 'Story like toggled successfully');
     }
 
     @Delete(':id')

@@ -24,6 +24,12 @@ export class Story {
     @Column({ type: 'boolean', default: true })
     is_active: boolean;
 
+    @Column({ type: 'int', default: 0 })
+    view_count: number;
+
+    @Column({ type: 'int', default: 0 })
+    like_count: number;
+
     @CreateDateColumn()
     created_at: Date;
 

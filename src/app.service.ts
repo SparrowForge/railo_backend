@@ -23,6 +23,7 @@ import { UserToFirebaseTokenMap } from './notifications/entity/userToFirebaseTok
 import { AppInstructions } from './app-instructions/entities/app-instructions.entity';
 import { Story } from './story/entities/story.entity';
 import { StoryView } from './story/entities/story_view.entity';
+import { StoryLike } from './story/entities/story_like.entity';
 
 @Injectable()
 
@@ -61,7 +62,8 @@ export class AppService implements TypeOrmOptionsFactory {
         UserToFirebaseTokenMap,
         AppInstructions,
         Story,
-        StoryView
+        StoryView,
+        StoryLike,
       ],
       synchronize: false, // Never use synchronize in production
       logging: isDevelopment,

@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { In, Repository, LessThan } from 'typeorm';
 import { Story } from './entities/story.entity';
 import { CreateStoryDto } from './dto/create-story.dto';
 import { StoryView } from './entities/story_view.entity';
@@ -8,6 +9,14 @@ import { Cron } from '@nestjs/schedule';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { PaginatedResponseDto } from 'src/common/dto/paginated-response.dto';
 import { StoryVisibilityEnum } from './entities/story_visibility.enum';
+import { StoryLike } from './entities/story_like.entity';
+
+export interface StoryEngagementDto extends Story {
+    view_count: number;
+    like_count: number;
+    is_viewed: boolean;
+    is_liked: boolean;
+}
 
 @Injectable()
 export class StoryService {
@@ -16,7 +25,10 @@ export class StoryService {
         private readonly storyRepo: Repository<Story>,
 
         @InjectRepository(StoryView)
-        private readonly storyViewRepo: Repository<StoryView>) { }
+        private readonly storyViewRepo: Repository<StoryView>,
+
+        @InjectRepository(StoryLike)
+        private readonly storyLikeRepo: Repository<StoryLike>) { }
 
     async createStory(userId: string, dto: CreateStoryDto): Promise<Story> {
         const expiresAt = new Date();
@@ -33,7 +45,12 @@ export class StoryService {
         return savedStory;
     }
 
-    async viewStory(storyId: string, viewerId: string): Promise<boolean> {
+    async viewStory(storyId: string, viewerId: string): Promise<{
+        view_count: number;
+        like_count: number;
+        is_viewed: boolean;
+        is_liked: boolean;
+    }> {
         const story = await this.storyRepo.findOne({
             where: { id: storyId, is_active: true },
         });
@@ -47,21 +64,33 @@ export class StoryService {
         });
 
         if (!existing) {
-            const view = this.storyViewRepo.create({
-                story_id: storyId,
-                viewer_id: viewerId,
-            });
+            let inserted = false;
+            try {
+                const view = this.storyViewRepo.create({
+                    story_id: storyId,
+                    viewer_id: viewerId,
+                });
 
-            await this.storyViewRepo.save(view);
+                await this.storyViewRepo.save(view);
+                inserted = true;
+            } catch (error: any) {
+                if (error?.code !== '23505') {
+                    throw error;
+                }
+            }
+
+            if (inserted) {
+                await this.storyRepo.increment({ id: storyId }, 'view_count', 1);
+            }
         }
 
-        return true;
+        return this.getStoryStats(storyId, viewerId);
     }
 
     async getActiveStories(
         userId: string,
         paginationDto: PaginationDto,
-    ): Promise<PaginatedResponseDto<Story>> {
+    ): Promise<PaginatedResponseDto<StoryEngagementDto>> {
         const page = Math.max(1, paginationDto.page ?? 1);
         const limit = Math.min(paginationDto.limit ?? 20, 50);
         const skip = (page - 1) * limit;
@@ -80,10 +109,11 @@ export class StoryService {
             .take(limit);
 
         const [items, total] = await queryBuilder.getManyAndCount();
+        const itemsWithEngagement = await this.attachEngagement(items, userId);
         const totalPages = Math.ceil(total / limit);
 
         return {
-            items,
+            items: itemsWithEngagement,
             meta: {
                 total,
                 page,
@@ -98,7 +128,7 @@ export class StoryService {
     async getUserStories(
         userId: string,
         paginationDto: PaginationDto,
-    ): Promise<PaginatedResponseDto<Story>> {
+    ): Promise<PaginatedResponseDto<StoryEngagementDto>> {
         const page = Math.max(1, paginationDto.page ?? 1);
         const limit = Math.min(paginationDto.limit ?? 20, 50);
         const skip = (page - 1) * limit;
@@ -114,10 +144,11 @@ export class StoryService {
             .take(limit);
 
         const [items, total] = await queryBuilder.getManyAndCount();
+        const itemsWithEngagement = await this.attachEngagement(items, userId);
         const totalPages = Math.ceil(total / limit);
 
         return {
-            items,
+            items: itemsWithEngagement,
             meta: {
                 total,
                 page,
@@ -139,6 +170,111 @@ export class StoryService {
         }
 
         await this.storyRepo.softDelete(storyId);
+    }
+
+    async toggleLike(storyId: string, userId: string): Promise<{
+        liked: boolean;
+        view_count: number;
+        like_count: number;
+        is_viewed: boolean;
+        is_liked: boolean;
+    }> {
+        const story = await this.storyRepo.findOne({
+            where: { id: storyId, is_active: true },
+        });
+
+        if (!story || story.expires_at <= new Date()) {
+            throw new NotFoundException('Story not found');
+        }
+
+        const existingLike = await this.storyLikeRepo.findOne({
+            where: { story_id: storyId, user_id: userId },
+        });
+
+        if (existingLike) {
+            await this.storyLikeRepo.delete(existingLike.id);
+            await this.storyRepo
+                .createQueryBuilder()
+                .update(Story)
+                .set({
+                    like_count: () => 'GREATEST(like_count - 1, 0)',
+                })
+                .where('id = :storyId', { storyId })
+                .execute();
+            const stats = await this.getStoryStats(storyId, userId);
+            return { liked: false, ...stats };
+        }
+
+        const storyLike = this.storyLikeRepo.create({
+            story_id: storyId,
+            user_id: userId,
+        });
+        await this.storyLikeRepo.save(storyLike);
+        await this.storyRepo.increment({ id: storyId }, 'like_count', 1);
+
+        const stats = await this.getStoryStats(storyId, userId);
+        return { liked: true, ...stats };
+    }
+
+    async getStoryStats(storyId: string, userId: string): Promise<{
+        view_count: number;
+        like_count: number;
+        is_viewed: boolean;
+        is_liked: boolean;
+    }> {
+        const story = await this.storyRepo.findOne({
+            where: { id: storyId, is_active: true },
+            select: ['id', 'expires_at', 'view_count', 'like_count'],
+        });
+
+        if (!story || story.expires_at <= new Date()) {
+            throw new NotFoundException('Story not found');
+        }
+
+        const [viewed, liked] = await Promise.all([
+            this.storyViewRepo.exist({ where: { story_id: storyId, viewer_id: userId } }),
+            this.storyLikeRepo.exist({ where: { story_id: storyId, user_id: userId } }),
+        ]);
+
+        return {
+            view_count: story.view_count,
+            like_count: story.like_count,
+            is_viewed: viewed,
+            is_liked: liked,
+        };
+    }
+
+    private async attachEngagement(
+        stories: Story[],
+        userId: string,
+    ): Promise<StoryEngagementDto[]> {
+        if (stories.length === 0) {
+            return [];
+        }
+
+        const storyIds = stories.map((story) => story.id);
+
+        const [viewedRows, likedRows] = await Promise.all([
+            this.storyViewRepo.find({
+                select: ['story_id'],
+                where: { viewer_id: userId, story_id: In(storyIds) },
+            }),
+            this.storyLikeRepo.find({
+                select: ['story_id'],
+                where: { user_id: userId, story_id: In(storyIds) },
+            }),
+        ]);
+
+        const viewedStorySet = new Set<string>(viewedRows.map((row) => row.story_id));
+        const likedStorySet = new Set<string>(likedRows.map((row) => row.story_id));
+
+        return stories.map((story) => ({
+            ...story,
+            view_count: story.view_count ?? 0,
+            like_count: story.like_count ?? 0,
+            is_viewed: viewedStorySet.has(story.id),
+            is_liked: likedStorySet.has(story.id),
+        }));
     }
 
     @Cron('*/5 * * * *')
