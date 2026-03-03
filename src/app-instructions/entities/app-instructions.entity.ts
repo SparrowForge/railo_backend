@@ -14,6 +14,9 @@ export class AppInstructions {
     @Column({ nullable: false })
     instruction: string;
 
+    @Column({ nullable: true, default: 0 })
+    sorting_no: number;
+
     @Column({ type: 'uuid' })
     created_by_id: string;
 

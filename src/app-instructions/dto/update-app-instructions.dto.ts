@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsEnum, IsNotEmpty, IsString } from "class-validator";
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 import { AppInstructionsEnum } from "../entities/app-instructions.enum";
 import { Entity } from "typeorm";
 
@@ -13,5 +13,10 @@ export class UpdateAppInstructionDto {
     @IsString()
     @IsNotEmpty()
     instruction: string;
+
+    @ApiProperty()
+    @IsNumber()
+    @IsOptional()
+    sorting_no: number = 0;
 }
 

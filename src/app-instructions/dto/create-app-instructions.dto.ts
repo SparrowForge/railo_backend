@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID } from "class-validator";
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from "class-validator";
 import { AppInstructionsEnum } from "../entities/app-instructions.enum";
 
 export class CreateAppInstructionDto {
@@ -12,6 +12,11 @@ export class CreateAppInstructionDto {
     @IsString()
     @IsNotEmpty()
     instruction: string;
+
+    @ApiProperty()
+    @IsNumber()
+    @IsOptional()
+    sorting_no: number = 0;
 
     @ApiProperty()
     @IsOptional()

@@ -20,7 +20,10 @@ export class AppInstructionsService {
     }
 
     async findAll(): Promise<AppInstructions[]> {
-        const queryBuilder = this.AppInstructionRepository.createQueryBuilder('AppInstruction');
+        const queryBuilder = this.AppInstructionRepository
+            .createQueryBuilder('AppInstruction')
+            .orderBy('AppInstruction.particulars', 'ASC')
+            .addOrderBy('AppInstruction.sorting_no', 'ASC');
         const items = await queryBuilder.getMany();
         return items
     }
