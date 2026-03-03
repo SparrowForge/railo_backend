@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional } from 'class-validator';
 
 import { FileCategory, FileType } from '../entities/file.entity';
 
@@ -71,4 +72,11 @@ export class FileResponseDto {
     example: 'File uploaded successfully',
   })
   message: string;
+
+  @ApiProperty({
+    description: 'public_url',
+    example: 'public_url',
+  })
+  @IsOptional()
+  public_url: string;
 }

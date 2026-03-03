@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -10,7 +11,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import sharp from 'sharp';
+import sharp = require('sharp');
 import { PaginatedResponseDto } from 'src/common/dto/paginated-response.dto';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { Repository } from 'typeorm';
@@ -57,6 +58,7 @@ export class FilesService {
         file.mimetype || 'application/octet-stream',
         folder,
       );
+      console.log('uploadResult:', uploadResult);
 
       // Generate thumbnail if it's an image
       let thumbnailUrl: string | undefined = undefined;
@@ -96,6 +98,7 @@ export class FilesService {
         file_type: uploadFileDto.file_type,
         file_category: uploadFileDto.file_category,
         uploaded_by: uploadFileDto.uploadedBy,
+        public_url: uploadResult.url,
       });
 
       const savedFile = await this.fileRepository.save(fileRecord);
@@ -117,6 +120,7 @@ export class FilesService {
       ); // 1 hour expiry
 
       // Return response
+
       return {
         success: true,
         file_id: savedFile.id,
@@ -129,6 +133,7 @@ export class FilesService {
         file_type: savedFile.file_type,
         file_category: savedFile.file_category,
         message: 'File uploaded successfully to S3',
+        public_url: uploadResult.url,
       };
     } catch (error) {
       throw new BadRequestException(

@@ -73,6 +73,9 @@ export class Files {
   @DeleteDateColumn({ type: 'timestamp' })
   deleted_at: Date;
 
+  @Column({ name: 'public_url', type: 'varchar', nullable: true })
+  public_url: string;
+
   // Relations
   @ManyToOne(() => User, { onDelete: 'NO ACTION' })
   @JoinColumn({ name: 'uploaded_by' })
