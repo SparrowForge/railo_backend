@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { Files } from './../../files/entities/file.entity';
 import { JoinColumn, ManyToOne } from 'typeorm';
+import { LanguageEnum } from './language.enum';
 
 @Entity('rillo_users')
 export class User {
@@ -76,6 +77,10 @@ export class User {
 
   @Column({ type: 'timestamp', nullable: true })
   last_seen_at?: Date;
+
+  @ApiProperty({ description: `Must be within ${Object.values(LanguageEnum).join(', ')}`, enum: LanguageEnum, example: LanguageEnum.English })
+  @Column({ type: 'enum', enum: LanguageEnum, nullable: true })
+  language: LanguageEnum;
 
   /*Relations */
   @ApiProperty({ description: 'File object', type: () => Files, })

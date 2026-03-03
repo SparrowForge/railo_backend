@@ -8,7 +8,7 @@ import {
 
 import { CreateUserDto } from './create-user.dto';
 
-export class UpdateUserProPicNameBioDto extends PartialType(CreateUserDto) {
+export class UpdateProfileRollaDto extends PartialType(CreateUserDto) {
   @ApiProperty({ description: 'User profile pic id', example: 1, required: false })
   @IsOptional()
   @IsNumber()

@@ -6,7 +6,7 @@ import {
 
 import { CreateUserDto } from './create-user.dto';
 
-export class UpdateUserUserNameDto extends PartialType(CreateUserDto) {
+export class UpdatProfileUserNameDto extends PartialType(CreateUserDto) {
   @ApiProperty({ description: 'User name', example: 'user@007' })
   @IsString()
   @IsNotEmpty()
