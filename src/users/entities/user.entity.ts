@@ -79,7 +79,7 @@ export class User {
   last_seen_at?: Date;
 
   @ApiProperty({ description: `Must be within ${Object.values(LanguageEnum).join(', ')}`, enum: LanguageEnum, example: LanguageEnum.English })
-  @Column({ type: 'enum', enum: LanguageEnum, nullable: true })
+  @Column({ type: 'enum', enum: LanguageEnum, nullable: true, default: LanguageEnum.English })
   language: LanguageEnum;
 
   /*Relations */

@@ -1,4 +1,4 @@
 export enum LanguageEnum {
-    BugReport = 'BugReport',
+    Arabic = 'Arabic',
     English = 'English',
 }
