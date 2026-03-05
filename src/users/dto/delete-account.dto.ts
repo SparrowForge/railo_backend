@@ -4,7 +4,7 @@ import {
   IsNotEmpty,
 } from 'class-validator';
 
-export class UpdateProfileDeleteAccountDto {
+export class DeleteAccountDto {
   @ApiProperty({ description: 'Irrelevant Content', example: true })
   @IsBoolean()
   @IsNotEmpty()

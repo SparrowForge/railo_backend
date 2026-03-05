@@ -82,6 +82,9 @@ export class User {
   @Column({ type: 'enum', enum: LanguageEnum, nullable: true, default: LanguageEnum.English })
   language: LanguageEnum;
 
+  @Column({ type: 'boolean', default: false, nullable: false })
+  is_delete_account: boolean;
+
   /*Relations */
   @ApiProperty({ description: 'File object', type: () => Files, })
   @ManyToOne(() => Files, { nullable: true })
