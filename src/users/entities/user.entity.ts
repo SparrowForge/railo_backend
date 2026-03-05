@@ -1,5 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Gender, Status } from 'src/common/enums';
 import { RolesEnum } from '../../common/enums/role.enum';
 import {
   Column,
@@ -12,6 +11,8 @@ import {
 import { Files } from './../../files/entities/file.entity';
 import { JoinColumn, ManyToOne } from 'typeorm';
 import { LanguageEnum } from './language.enum';
+import { Gender } from './gender.enum';
+import { Status } from '../../common/enums';
 
 @Entity('rillo_users')
 export class User {
