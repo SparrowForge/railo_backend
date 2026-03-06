@@ -10,11 +10,11 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { ContactCatagoryEnum } from './contact-catagory.enum';
-import { User } from './user.entity';
+import { User } from '../../users/entities/user.entity';
 
 @Entity('rillo_contact')
 export class Contact {
-  @ApiProperty({ description: 'User ID' })
+  @ApiProperty({ description: 'Primary ID' })
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -26,7 +26,7 @@ export class Contact {
   remarks: string;
 
   @ApiProperty({ description: 'Created by user id', example: 'xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', })
-  @Column({ nullable: true })
+  @Column({ type: "uuid", nullable: false })
   user_id: string;
 
   //====================================================================

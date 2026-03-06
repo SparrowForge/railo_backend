@@ -2,8 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 
 import { PaginationDto } from '../../common/dto/pagination.dto';
-import { Gender, Status } from '../../common/enums';
+import { Status } from '../../common/enums';
 import { RolesEnum } from 'src/common/enums/role.enum';
+import { Gender } from '../enum/gender.enum';
 
 export class FilterUserDto extends PaginationDto {
   @ApiProperty({ description: 'User Roles', example: 'STUDENT', enum: RolesEnum, required: false, })

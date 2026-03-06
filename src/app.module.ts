@@ -23,6 +23,7 @@ import { NotificationRecordModule } from './notification-record/notification-rec
 import { AppInstructionsModule } from './app-instructions/app-instructions.module';
 import { StoryModule } from './story/story.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ContactModule } from './contact/contact.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     NotificationRecordModule,
     AppInstructionsModule,
     StoryModule,
+    ContactModule,
   ],
   controllers: [AppController],
   providers: [

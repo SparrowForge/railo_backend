@@ -10,8 +10,9 @@ import {
   MinLength,
 } from 'class-validator';
 
-import { Gender, Status } from '../../common/enums';
+import { Status } from '../../common/enums';
 import { RolesEnum } from 'src/common/enums/role.enum';
+import { Gender } from '../enum/gender.enum';
 
 export class CreateUserDto {
   // ✅ first-screen

@@ -6,7 +6,7 @@ import {
 } from 'class-validator';
 
 import { CreateUserDto } from './create-user.dto';
-import { Gender } from '../entities/gender.enum';
+import { Gender } from '../enum/gender.enum';
 
 export class UpdateProfileBirthDateGenderDto extends PartialType(CreateUserDto) {
   @ApiProperty({ description: 'Date of birth', example: '2025-03-14T12:00:00.000Z', })

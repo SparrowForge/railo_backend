@@ -8,10 +8,12 @@ import { JwtStrategy } from '../auth/jwt.strategy';
 import { User } from './entities/user.entity';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
+import { DeleteAccount } from './entities/delete-account.entity';
+import { Contact } from '../contact/entity/contact.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, DeleteAccount, Contact]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -26,4 +28,4 @@ import { UsersService } from './users.service';
   providers: [UsersService, JwtStrategy],
   exports: [UsersService],
 })
-export class UsersModule {}
+export class UsersModule { }

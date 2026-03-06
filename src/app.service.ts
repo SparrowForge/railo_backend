@@ -24,6 +24,8 @@ import { AppInstructions } from './app-instructions/entities/app-instructions.en
 import { Story } from './story/entities/story.entity';
 import { StoryView } from './story/entities/story_view.entity';
 import { StoryLike } from './story/entities/story_like.entity';
+import { DeleteAccount } from './users/entities/delete-account.entity';
+import { Contact } from './contact/entity/contact.entity';
 
 @Injectable()
 
@@ -64,6 +66,8 @@ export class AppService implements TypeOrmOptionsFactory {
         Story,
         StoryView,
         StoryLike,
+        DeleteAccount,
+        Contact
       ],
       synchronize: false, // Never use synchronize in production
       logging: isDevelopment,

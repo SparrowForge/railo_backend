@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 
 import { PaginatedResponseDto } from '../common/dto/paginated-response.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
@@ -9,12 +10,19 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { FilterUserDto } from './dto/filter-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
+import { DeleteAccount } from './entities/delete-account.entity';
+import { DeleteAccountDto } from './dto/delete-account.dto';
+import { Cron } from '@nestjs/schedule';
+import { Status } from '../common/enums';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+
+    @InjectRepository(DeleteAccount)
+    private deleteAccountRepository: Repository<DeleteAccount>,
   ) { }
 
   async create(createUserDto: CreateUserDto) {
@@ -158,4 +166,25 @@ export class UsersService {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await this.userRepository.update(id, { password: hashedPassword });
   }
+
+  async deleteAccount(user_id: string, dto: DeleteAccountDto) {
+    await this.userRepository.update(user_id, { is_delete_account: true, account_delete_at: new Date() });
+    this.deleteAccountRepository.create(dto);
+    return this.deleteAccountRepository.save(dto);
+  }
+
+  @Cron('*/5 * * * *')
+  async deactivateUserAccountAfterSpecificTime() {
+    //14 days after the user delete account deactivate the user
+    await this.userRepository.update(
+      {
+        is_delete_account: true,
+        account_delete_at: LessThan(new Date(new Date().getTime() - 14 * 24 * 60 * 60 * 1000)),
+      },
+      {
+        status: Status.inactive,
+      },
+    );
+  }
+
 }

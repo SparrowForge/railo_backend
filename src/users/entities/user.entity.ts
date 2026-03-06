@@ -10,8 +10,8 @@ import {
 } from 'typeorm';
 import { Files } from './../../files/entities/file.entity';
 import { JoinColumn, ManyToOne } from 'typeorm';
-import { LanguageEnum } from './language.enum';
-import { Gender } from './gender.enum';
+import { LanguageEnum } from '../enum/language.enum';
+import { Gender } from '../enum/gender.enum';
 import { Status } from '../../common/enums';
 
 @Entity('rillo_users')
@@ -85,6 +85,11 @@ export class User {
 
   @Column({ type: 'boolean', default: false, nullable: false })
   is_delete_account: boolean;
+
+
+  @ApiProperty({ description: 'account_delete_at', example: '2025-03-14T12:00:00.000Z', })
+  @Column({ type: 'timestamp', nullable: true })
+  account_delete_at: Date;
 
   /*Relations */
   @ApiProperty({ description: 'File object', type: () => Files, })

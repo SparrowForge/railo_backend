@@ -12,7 +12,7 @@ import {
 import { User } from './user.entity';
 
 @Entity('rillo_delete_account')
-export class Contact {
+export class DeleteAccount {
   @ApiProperty({ description: 'User ID' })
   @PrimaryGeneratedColumn('uuid')
   id: string;

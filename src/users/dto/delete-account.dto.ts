@@ -1,10 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, PartialType } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsNotEmpty,
 } from 'class-validator';
+import { DeleteAccount } from '../entities/delete-account.entity';
 
-export class DeleteAccountDto {
+export class DeleteAccountDto extends PartialType(DeleteAccount) {
   @ApiProperty({ description: 'Irrelevant Content', example: true })
   @IsBoolean()
   @IsNotEmpty()

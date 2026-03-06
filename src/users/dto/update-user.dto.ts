@@ -9,9 +9,10 @@ import {
   IsString,
 } from 'class-validator';
 
-import { Gender, Status } from '../../common/enums';
+import { Status } from '../../common/enums';
 import { CreateUserDto } from './create-user.dto';
 import { RolesEnum } from 'src/common/enums/role.enum';
+import { Gender } from '../enum/gender.enum';
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {
 
