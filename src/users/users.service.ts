@@ -18,6 +18,8 @@ import { UpdateProfileBirthDateGenderDto } from './dto/update-profile-birth-date
 import { UpdateProfilePhoneNoDto } from './dto/update-profile-phone-number.dto';
 import { UpdateProfileRollaDto } from './dto/update-profile-rolla.dto';
 import { UpdatProfileUserNameDto } from './dto/update-profile-userName.dto';
+import { UpdatProfileLanguageDto } from './dto/update-profile-language.dto';
+import { UpdatProfileSettingsStatusChangeDto } from './dto/update-profile-settings-status-change.dto';
 
 @Injectable()
 export class UsersService {
@@ -158,6 +160,9 @@ export class UsersService {
   updateUserName(id: string, updateUserDto: UpdatProfileUserNameDto) {
     return this.userRepository.update(id, updateUserDto);
   }
+  updateLanguage(id: string, updateUserDto: UpdatProfileLanguageDto) {
+    return this.userRepository.update(id, updateUserDto);
+  }
 
   remove(id: string) {
     return this.userRepository.softDelete(id);
@@ -196,6 +201,12 @@ export class UsersService {
   async retriveAccount(user_id: string) {
     await this.userRepository.update(user_id, { is_delete_account: false, account_delete_at: null });
     return await this.deleteAccountRepository.delete({ user_id });
+  }
+
+  async settingsStatusChange(user_id: string, dto: UpdatProfileSettingsStatusChangeDto) {
+    await this.userRepository.update(user_id, {
+      [dto.setting]: dto.enable,
+    });
   }
 
 

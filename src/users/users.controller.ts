@@ -30,6 +30,8 @@ import { UpdateProfileBirthDateGenderDto } from './dto/update-profile-birth-date
 import { UpdateProfilePhoneNoDto } from './dto/update-profile-phone-number.dto';
 import { UpdateProfileRollaDto } from './dto/update-profile-rolla.dto';
 import { UpdatProfileUserNameDto } from './dto/update-profile-userName.dto';
+import { UpdatProfileLanguageDto } from './dto/update-profile-language.dto';
+import { UpdatProfileSettingsStatusChangeDto } from './dto/update-profile-settings-status-change.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -160,8 +162,20 @@ export class UsersController {
   @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
   async updateUserName(@CurrentUser() authUser: AuthUser, @Param('id') id: string, @Body() updateUserDto: UpdatProfileUserNameDto,) {
     const user = await this.usersService.updateUserName(id, updateUserDto);
-    return new BaseResponseDto(user, 'User updated successfully');
+    return new BaseResponseDto(user, 'User name updated successfully');
   }
+
+  @Patch(':id/language')
+  @ApiOperation({ summary: 'Update a user by id', description: 'Updates an existing user with the provided information. Only active users can be updated. Requires authentication.', })
+  @ApiParam({ name: 'id', description: 'User ID (uuid)', example: '45e16f14-b27f-4d20-99df-c1d5535ff9e3', type: 'number', })
+  @ApiResponse({ status: 200, description: 'User updated successfully', type: BaseResponseDto<User>, })
+  @ApiResponse({ status: 404, description: 'User not found', })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+  async updateLanguage(@Param('id') id: string, @Body() updateUserDto: UpdatProfileLanguageDto,) {
+    const user = await this.usersService.updateLanguage(id, updateUserDto);
+    return new BaseResponseDto(user, 'User language updated successfully');
+  }
+
 
   @Delete(':id')
   @ApiOperation({
@@ -199,6 +213,16 @@ export class UsersController {
     return new BaseResponseDto(null, 'User restored successfully');
   }
 
+  @Patch(':id/settings-status-change')
+  @ApiOperation({ summary: 'settings-status-change', description: 'settings-status-change. Requires authentication.', })
+  @ApiResponse({ status: 200, description: 'settings-status-change successfully', type: BaseResponseDto<null>, })
+  @ApiResponse({ status: 404, description: 'User not found', })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+  async settingsStatusChange(@CurrentUser() authUser: AuthUser, @Param('id') id: string, @Body() dto: UpdatProfileSettingsStatusChangeDto) {
+    await this.usersService.settingsStatusChange(id, dto);
+    return new BaseResponseDto(null, 'Account settings-status-change successfully');
+  }
+
   @Delete('account/delete-account')
   @ApiOperation({ summary: 'delete a user by id', description: 'deletes a user from the database. This action cannot be undone. Requires authentication.', })
   @ApiResponse({ status: 200, description: 'User permanently deleted successfully', type: BaseResponseDto<null>, })
@@ -218,4 +242,6 @@ export class UsersController {
     await this.usersService.retriveAccount(authUser.userId);
     return new BaseResponseDto(null, 'Account retrive successfully');
   }
+
+
 }

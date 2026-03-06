@@ -76,6 +76,7 @@ export class User {
   @Column({ type: 'enum', enum: Status, nullable: false, default: Status.active, })
   status: Status;
 
+  @ApiProperty()
   @Column({ type: 'timestamp', nullable: true })
   last_seen_at?: Date;
 
@@ -83,13 +84,35 @@ export class User {
   @Column({ type: 'enum', enum: LanguageEnum, nullable: true, default: LanguageEnum.English })
   language: LanguageEnum;
 
+  @ApiProperty()
   @Column({ type: 'boolean', default: false, nullable: false })
   is_delete_account: boolean;
-
 
   @ApiProperty({ description: 'account_delete_at', example: '2025-03-14T12:00:00.000Z', })
   @Column({ type: 'timestamp', nullable: true })
   account_delete_at: Date | null;
+
+  //-----------------------------------------------
+  @ApiProperty()
+  @Column({ type: 'boolean', default: false, nullable: false })
+  is_show_your_birth_date: boolean;
+
+  @ApiProperty()
+  @Column({ type: 'boolean', default: false, nullable: false })
+  is_show_your_location_on_profile: boolean;
+
+  @ApiProperty()
+  @Column({ type: 'boolean', default: true, nullable: false })
+  is_disable_private_chats: boolean;
+
+  @ApiProperty()
+  @Column({ type: 'boolean', default: true, nullable: false })
+  is_enable_notifications: boolean;
+
+  @ApiProperty()
+  @Column({ type: 'boolean', default: false, nullable: false })
+  is_Save_your_activity_on_this_device: boolean;
+  //-----------------------------------------------
 
   /*Relations */
   @ApiProperty({ description: 'File object', type: () => Files, })
