@@ -21,6 +21,7 @@ export class UserLocation {
   @Column({ nullable: true })
   user_id: string;
 
+  //const point = `POINT(${dto.longitude} ${dto.latitude})`;
   @Column({ type: 'geography', spatialFeatureType: 'Point', srid: 4326 })
   location: string;
 
