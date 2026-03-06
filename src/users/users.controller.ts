@@ -26,6 +26,10 @@ import { UsersService } from './users.service';
 import { CurrentUser } from './../common/decorators/current-user.decorator';
 import type AuthUser from 'src/auth/dto/auth-user';
 import { DeleteAccountDto } from './dto/delete-account.dto';
+import { UpdateProfileBirthDateGenderDto } from './dto/update-profile-birth-date-gender.dto';
+import { UpdateProfilePhoneNoDto } from './dto/update-profile-phone-number.dto';
+import { UpdateProfileRollaDto } from './dto/update-profile-rolla.dto';
+import { UpdatProfileUserNameDto } from './dto/update-profile-userName.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -111,6 +115,51 @@ export class UsersController {
     updateUserDto.updated_by = authUser.userId;
     console.log(updateUserDto);
     const user = await this.usersService.update(id, updateUserDto);
+    return new BaseResponseDto(user, 'User updated successfully');
+  }
+
+  @Patch(':id/birth-date-gander')
+  @ApiOperation({ summary: 'Update a user by id', description: 'Updates an existing user with the provided information. Only active users can be updated. Requires authentication.', })
+  @ApiParam({ name: 'id', description: 'User ID (uuid)', example: '45e16f14-b27f-4d20-99df-c1d5535ff9e3', type: 'number', })
+  @ApiResponse({ status: 200, description: 'User updated successfully', type: BaseResponseDto<User>, })
+  @ApiResponse({ status: 404, description: 'User not found', })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+  async updateBirthDateGander(@CurrentUser() authUser: AuthUser, @Param('id') id: string, @Body() updateUserDto: UpdateProfileBirthDateGenderDto,) {
+    const user = await this.usersService.updateBirthDateGander(id, updateUserDto);
+    return new BaseResponseDto(user, 'User birth date and gender updated successfully');
+  }
+
+
+  @Patch(':id/phone-number')
+  @ApiOperation({ summary: 'Update a user by id', description: 'Updates an existing user with the provided information. Only active users can be updated. Requires authentication.', })
+  @ApiParam({ name: 'id', description: 'User ID (uuid)', example: '45e16f14-b27f-4d20-99df-c1d5535ff9e3', type: 'number', })
+  @ApiResponse({ status: 200, description: 'User updated successfully', type: BaseResponseDto<User>, })
+  @ApiResponse({ status: 404, description: 'User not found', })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+  async updatePhomeNumber(@CurrentUser() authUser: AuthUser, @Param('id') id: string, @Body() updateUserDto: UpdateProfilePhoneNoDto,) {
+    const user = await this.usersService.updatePhoneNumber(id, updateUserDto);
+    return new BaseResponseDto(user, 'User phone number updated successfully');
+  }
+
+  @Patch(':id/rolla')
+  @ApiOperation({ summary: 'Update a user by id', description: 'Updates an existing user with the provided information. Only active users can be updated. Requires authentication.', })
+  @ApiParam({ name: 'id', description: 'User ID (uuid)', example: '45e16f14-b27f-4d20-99df-c1d5535ff9e3', type: 'number', })
+  @ApiResponse({ status: 200, description: 'User updated successfully', type: BaseResponseDto<User>, })
+  @ApiResponse({ status: 404, description: 'User not found', })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+  async updateRolla(@CurrentUser() authUser: AuthUser, @Param('id') id: string, @Body() updateUserDto: UpdateProfileRollaDto,) {
+    const user = await this.usersService.updateRolla(id, updateUserDto);
+    return new BaseResponseDto(user, 'Rolla updated successfully');
+  }
+
+  @Patch(':id/user-name')
+  @ApiOperation({ summary: 'Update a user by id', description: 'Updates an existing user with the provided information. Only active users can be updated. Requires authentication.', })
+  @ApiParam({ name: 'id', description: 'User ID (uuid)', example: '45e16f14-b27f-4d20-99df-c1d5535ff9e3', type: 'number', })
+  @ApiResponse({ status: 200, description: 'User updated successfully', type: BaseResponseDto<User>, })
+  @ApiResponse({ status: 404, description: 'User not found', })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+  async updateUserName(@CurrentUser() authUser: AuthUser, @Param('id') id: string, @Body() updateUserDto: UpdatProfileUserNameDto,) {
+    const user = await this.usersService.updateUserName(id, updateUserDto);
     return new BaseResponseDto(user, 'User updated successfully');
   }
 

@@ -14,6 +14,10 @@ import { DeleteAccount } from './entities/delete-account.entity';
 import { DeleteAccountDto } from './dto/delete-account.dto';
 import { Cron } from '@nestjs/schedule';
 import { Status } from '../common/enums';
+import { UpdateProfileBirthDateGenderDto } from './dto/update-profile-birth-date-gender.dto';
+import { UpdateProfilePhoneNoDto } from './dto/update-profile-phone-number.dto';
+import { UpdateProfileRollaDto } from './dto/update-profile-rolla.dto';
+import { UpdatProfileUserNameDto } from './dto/update-profile-userName.dto';
 
 @Injectable()
 export class UsersService {
@@ -138,6 +142,20 @@ export class UsersService {
   }
 
   update(id: string, updateUserDto: UpdateUserDto) {
+    return this.userRepository.update(id, updateUserDto);
+  }
+  updateBirthDateGander(id: string, updateUserDto: UpdateProfileBirthDateGenderDto) {
+    return this.userRepository.update(id, updateUserDto);
+  }
+  updatePhoneNumber(id: string, updateUserDto: UpdateProfilePhoneNoDto) {
+    return this.userRepository.update(id, updateUserDto);
+  }
+
+  updateRolla(id: string, updateUserDto: UpdateProfileRollaDto) {
+    return this.userRepository.update(id, updateUserDto);
+  }
+
+  updateUserName(id: string, updateUserDto: UpdatProfileUserNameDto) {
     return this.userRepository.update(id, updateUserDto);
   }
 
