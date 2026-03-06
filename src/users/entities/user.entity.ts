@@ -89,7 +89,7 @@ export class User {
 
   @ApiProperty({ description: 'account_delete_at', example: '2025-03-14T12:00:00.000Z', })
   @Column({ type: 'timestamp', nullable: true })
-  account_delete_at: Date;
+  account_delete_at: Date | null;
 
   /*Relations */
   @ApiProperty({ description: 'File object', type: () => Files, })

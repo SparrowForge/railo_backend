@@ -25,6 +25,7 @@ import { User } from './entities/user.entity';
 import { UsersService } from './users.service';
 import { CurrentUser } from './../common/decorators/current-user.decorator';
 import type AuthUser from 'src/auth/dto/auth-user';
+import { DeleteAccountDto } from './dto/delete-account.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -147,5 +148,25 @@ export class UsersController {
   async restore(@Param('id') id: string) {
     await this.usersService.restore(id);
     return new BaseResponseDto(null, 'User restored successfully');
+  }
+
+  @Delete('account/delete-account')
+  @ApiOperation({ summary: 'delete a user by id', description: 'deletes a user from the database. This action cannot be undone. Requires authentication.', })
+  @ApiResponse({ status: 200, description: 'User permanently deleted successfully', type: BaseResponseDto<null>, })
+  @ApiResponse({ status: 404, description: 'User not found', })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+  async deleteAccount(@CurrentUser() authUser: AuthUser, @Body() dto: DeleteAccountDto) {
+    await this.usersService.deleteAccount(authUser.userId, dto);
+    return new BaseResponseDto(null, 'Account deleted successfully');
+  }
+
+  @Post('account/retrive-account')
+  @ApiOperation({ summary: 'delete a user by id', description: 'deletes a user from the database. This action cannot be undone. Requires authentication.', })
+  @ApiResponse({ status: 200, description: 'User permanently deleted successfully', type: BaseResponseDto<null>, })
+  @ApiResponse({ status: 404, description: 'User not found', })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+  async retriveAccount(@CurrentUser() authUser: AuthUser) {
+    await this.usersService.retriveAccount(authUser.userId);
+    return new BaseResponseDto(null, 'Account retrive successfully');
   }
 }

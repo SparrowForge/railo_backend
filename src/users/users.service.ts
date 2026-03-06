@@ -169,13 +169,22 @@ export class UsersService {
 
   async deleteAccount(user_id: string, dto: DeleteAccountDto) {
     await this.userRepository.update(user_id, { is_delete_account: true, account_delete_at: new Date() });
+
+    dto.user_id = user_id;
     this.deleteAccountRepository.create(dto);
     return this.deleteAccountRepository.save(dto);
   }
 
+  async retriveAccount(user_id: string) {
+    await this.userRepository.update(user_id, { is_delete_account: false, account_delete_at: null });
+    return await this.deleteAccountRepository.delete({ user_id });
+  }
+
+
   @Cron('*/5 * * * *')
   async deactivateUserAccountAfterSpecificTime() {
     //14 days after the user delete account deactivate the user
+    console.log('Delete account checking start.')
     await this.userRepository.update(
       {
         is_delete_account: true,
@@ -185,6 +194,7 @@ export class UsersService {
         status: Status.inactive,
       },
     );
+    console.log('Delete account checking end.')
   }
 
 }

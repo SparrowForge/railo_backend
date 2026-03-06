@@ -2,10 +2,17 @@ import { ApiProperty, PartialType } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsNotEmpty,
+  IsOptional,
+  IsUUID,
 } from 'class-validator';
 import { DeleteAccount } from '../entities/delete-account.entity';
 
 export class DeleteAccountDto extends PartialType(DeleteAccount) {
+  @ApiProperty({ description: 'Created by user id', example: 'xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', })
+  @IsOptional()
+  @IsUUID()
+  user_id: string;
+
   @ApiProperty({ description: 'Irrelevant Content', example: true })
   @IsBoolean()
   @IsNotEmpty()
