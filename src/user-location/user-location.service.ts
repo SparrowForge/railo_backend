@@ -17,6 +17,8 @@ export class UserLocationService {
 
     async create(userlocationDto: CreateUserLocationDto) {
         const userlocation = this.userlocationRepository.create(userlocationDto);
+        const point = `POINT(${userlocationDto.longitude} ${userlocationDto.latitude})`;
+        userlocation.location = point;
         return this.userlocationRepository.save(userlocation);
     }
 
@@ -24,17 +26,18 @@ export class UserLocationService {
         paginationDto: PaginationDto,
         filters?: Partial<FilterUserLocationDto>,
     ): Promise<PaginatedResponseDto<UserLocation>> {
-        const { page = 1, limit = 1000000000000 } = paginationDto;
+        const { page = 1, limit = 20 } = paginationDto;
         const skip = (page - 1) * limit;
+        const hasAreaRangeFilter =
+            !!filters?.user_id && filters?.area_in_length_km !== undefined;
 
         const queryBuilder = this.userlocationRepository
             .createQueryBuilder('userlocation')
             .leftJoinAndSelect('userlocation.users', 'users')
             .skip(skip)
-            .take(limit)
-            .orderBy('userlocation.created_at', 'DESC');
+            .take(limit);
 
-        if (filters?.user_id) {
+        if (filters?.user_id && !hasAreaRangeFilter) {
             queryBuilder.andWhere('userlocation.user_id = :user_id', {
                 user_id: filters.user_id,
             });
@@ -59,12 +62,48 @@ export class UserLocationService {
                 country: `%${filters.country}%`,
             });
         }
-        if (filters?.user_id && filters?.area_in_length_km) {
-            queryBuilder.andWhere('ST_DistanceSphere(userlocation.location, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)) <= :area_in_length_km', {
-                longitude: filters.user_id.longitude,
-                latitude: filters.user_id.latitude,
-                area_in_length_km: filters.area_in_length_km,
+        if (hasAreaRangeFilter) {
+            const centerLocation = await this.userlocationRepository.findOne({
+                where: { user_id: filters.user_id },
+                order: { created_at: 'DESC' },
             });
+
+            if (!centerLocation) {
+                return {
+                    items: [],
+                    meta: {
+                        total: 0,
+                        page,
+                        limit,
+                        totalPages: 0,
+                        hasNextPage: false,
+                        hasPreviousPage: false,
+                    },
+                };
+            }
+
+            const radiusInMeters = Number(filters.area_in_length_km) * 1000;
+
+            queryBuilder
+                .addSelect(
+                    `ST_Distance(
+                        userlocation.location,
+                        ST_SetSRID(ST_MakePoint(:lng,:lat),4326)::geography
+                    )`,
+                    'distance'
+                ).andWhere(
+                    `ST_DWithin(
+                    userlocation.location,
+                    ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+                    :radiusInMeters
+                )`,
+                    {
+                        longitude: centerLocation.longitude,
+                        latitude: centerLocation.latitude,
+                        radiusInMeters,
+                    },
+                )
+                .orderBy('distance', 'ASC');
         }
 
 
@@ -96,6 +135,8 @@ export class UserLocationService {
     }
 
     update(id: string, dto: CreateUserLocationDto) {
+        const point = `POINT(${dto.longitude} ${dto.latitude})`;
+        dto.location = point;
         return this.userlocationRepository.update(id, dto);
     }
 
@@ -103,12 +144,10 @@ export class UserLocationService {
         return this.userlocationRepository.softDelete(id);
     }
 
-    // Method to permanently delete a user (for admin purposes)
     permanentRemove(id: string) {
         return this.userlocationRepository.delete(id);
     }
 
-    // Method to restore a soft-deleted user
     restore(id: string) {
         return this.userlocationRepository.restore(id);
     }

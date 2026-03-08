@@ -4,6 +4,7 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -12,6 +13,8 @@ import {
 import { User } from '../../users/entities/user.entity';
 
 @Entity('rillo_users_location')
+@Index('idx_userlocation_location', ['location'], { spatial: true })
+@Index('idx_userlocation_user_id', ['user_id'])
 export class UserLocation {
   @ApiProperty({ description: 'User ID' })
   @PrimaryGeneratedColumn('uuid')
@@ -22,13 +25,13 @@ export class UserLocation {
   user_id: string;
 
   //const point = `POINT(${dto.longitude} ${dto.latitude})`;
-  @Column({ type: 'geography', spatialFeatureType: 'Point', srid: 4326 })
+  @Column({ type: 'geography', spatialFeatureType: 'Point', srid: 4326, nullable: false })
   location: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: false })
   latitude: number;
 
-  @Column({ nullable: true })
+  @Column({ nullable: false })
   longitude: number;
 
   @Column({ nullable: true })
