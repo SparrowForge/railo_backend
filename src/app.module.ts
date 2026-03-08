@@ -24,6 +24,7 @@ import { AppInstructionsModule } from './app-instructions/app-instructions.modul
 import { StoryModule } from './story/story.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ContactModule } from './contact/contact.module';
+import { UserLocationModule } from './user-location/user-location.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { ContactModule } from './contact/contact.module';
     AppInstructionsModule,
     StoryModule,
     ContactModule,
+    UserLocationModule,
   ],
   controllers: [AppController],
   providers: [
