@@ -1,13 +1,8 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { UserLocation } from '../entities/user-location.entity';
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class UpdateUserLocationDto extends PartialType(UserLocation) {
-  @ApiProperty({ description: 'Created by user id', example: 'xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', })
-  @IsUUID()
-  @IsNotEmpty()
-  user_id: string;
-
   @ApiProperty()
   @IsNotEmpty()
   @IsNumber()

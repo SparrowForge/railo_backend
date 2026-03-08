@@ -3,7 +3,7 @@ import { UserLocation } from '../entities/user-location.entity';
 import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateUserLocationDto extends PartialType(UserLocation) {
-  @ApiProperty({ description: 'Created by user id', example: 'xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', })
+  @ApiProperty({ description: 'Created by user id', example: '8e530fda-deef-4d68-8024-3087d1dd7f17', })
   @IsUUID()
   @IsNotEmpty()
   user_id: string;

@@ -42,7 +42,7 @@ export class UserLocationController {
     @ApiResponse({ status: 400, description: 'UserLocation already exists', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
     async sendChatRequest(@CurrentUser() user: AuthUser, @Body() dto: CreateUserLocationDto,) {
-        dto.user_id = user.userId;
+        // dto.user_id = user.userId;
         const result = await this.userLocationService.create(dto);
         return new BaseResponseDto(result, 'UserLocation saved successfully');
     }

@@ -7,6 +7,7 @@ import { PaginationDto } from '../common/dto/pagination.dto';
 import { UserLocation } from './entities/user-location.entity';
 import { CreateUserLocationDto } from './dto/create-user-location.dto';
 import { FilterUserLocationDto } from './dto/filter-user-location.dto';
+import { UpdateUserLocationDto } from './dto/update-user-location.dto';
 
 @Injectable()
 export class UserLocationService {
@@ -16,9 +17,13 @@ export class UserLocationService {
     ) { }
 
     async create(userlocationDto: CreateUserLocationDto) {
-        const userlocation = this.userlocationRepository.create(userlocationDto);
-        const point = `POINT(${userlocationDto.longitude} ${userlocationDto.latitude})`;
-        userlocation.location = point;
+        const userlocation = this.userlocationRepository.create({
+            ...userlocationDto,
+            location: {
+                type: "Point",
+                coordinates: [userlocationDto.longitude, userlocationDto.latitude],
+            },
+        });
         return this.userlocationRepository.save(userlocation);
     }
 
@@ -87,21 +92,22 @@ export class UserLocationService {
             queryBuilder
                 .addSelect(
                     `ST_Distance(
-                        userlocation.location,
-                        ST_SetSRID(ST_MakePoint(:lng,:lat),4326)::geography
-                    )`,
+                            userlocation.location,
+                            ST_SetSRID(ST_MakePoint(:longitude,:latitude),4326)::geography
+                        )`,
                     'distance'
-                ).andWhere(
+                )
+                .andWhere(
                     `ST_DWithin(
-                    userlocation.location,
-                    ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
-                    :radiusInMeters
-                )`,
+                            userlocation.location,
+                            ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+                            :radiusInMeters
+                        )`,
                     {
                         longitude: centerLocation.longitude,
                         latitude: centerLocation.latitude,
                         radiusInMeters,
-                    },
+                    }
                 )
                 .orderBy('distance', 'ASC');
         }
@@ -134,9 +140,11 @@ export class UserLocationService {
         });
     }
 
-    update(id: string, dto: CreateUserLocationDto) {
-        const point = `POINT(${dto.longitude} ${dto.latitude})`;
-        dto.location = point;
+    update(id: string, dto: UpdateUserLocationDto) {
+        dto.location = {
+            type: "Point",
+            coordinates: [dto.longitude, dto.latitude],
+        };
         return this.userlocationRepository.update(id, dto);
     }
 

@@ -7,6 +7,7 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  type Point,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -26,12 +27,12 @@ export class UserLocation {
 
   //const point = `POINT(${dto.longitude} ${dto.latitude})`;
   @Column({ type: 'geography', spatialFeatureType: 'Point', srid: 4326, nullable: false })
-  location: string;
+  location: Point;
 
-  @Column({ nullable: false })
+  @Column({ type: 'double precision', nullable: false })
   latitude: number;
 
-  @Column({ nullable: false })
+  @Column({ type: 'double precision', nullable: false })
   longitude: number;
 
   @Column({ nullable: true })

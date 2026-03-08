@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsNumberString, IsOptional, IsString, IsUUID } from 'class-validator';
 
 import { PaginationDto } from '../../common/dto/pagination.dto';
 
@@ -11,7 +11,7 @@ export class FilterUserLocationDto extends PaginationDto {
 
   @ApiProperty()
   @IsOptional()
-  @IsNumber()
+  @IsNumberString()
   area_in_length_km: number;
 
   @ApiProperty()
