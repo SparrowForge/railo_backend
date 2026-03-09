@@ -1,18 +1,17 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { UserLocationService } from './user-location.service';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Roles } from 'src/common/decorators/roles.decorator';
-import { RolesEnum } from 'src/common/enums/role.enum';
 import { FilterUserLocationDto } from './dto/filter-user-location.dto';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import type AuthUser from 'src/auth/dto/auth-user';
 import { CreateUserLocationDto } from './dto/create-user-location.dto';
 import { BaseResponseDto } from 'src/common/dto/base-response.dto';
 import { UpdateUserLocationDto } from './dto/update-user-location.dto';
+import { Public } from '../common/decorators/public.decorator';
 
 @ApiTags('User Loaction')
 @ApiBearerAuth()
-@Roles(RolesEnum.admin, RolesEnum.user)
+@Public()
 @Controller('api/v1/user-location')
 export class UserLocationController {
     constructor(private readonly userLocationService: UserLocationService) { }
