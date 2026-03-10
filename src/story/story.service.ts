@@ -1,7 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository, LessThan } from 'typeorm';
 import { Story } from './entities/story.entity';
@@ -20,8 +17,25 @@ export interface StoryEngagementDto extends Story {
     is_liked: boolean;
 }
 
+export interface ActiveStoryItemDto {
+    id: string;
+    is_view: boolean;
+    is_liked: boolean;
+    public_url: string | null;
+}
+
+export interface ActiveStoryGroupDto {
+    user_id: string;
+    user_name: string | null;
+    name: string | null;
+    profile_image: string | null;
+    stories: ActiveStoryItemDto[];
+}
+
 @Injectable()
-export class StoryService {
+export class StoryService implements OnModuleInit {
+    private readonly logger = new Logger(StoryService.name);
+
     constructor(
         @InjectRepository(Story)
         private readonly storyRepo: Repository<Story>,
@@ -31,6 +45,10 @@ export class StoryService {
 
         @InjectRepository(StoryLike)
         private readonly storyLikeRepo: Repository<StoryLike>) { }
+
+    async onModuleInit() {
+        await this.deactivateExpiredStories();
+    }
 
     async createStory(userId: string, dto: CreateStoryDto): Promise<Story[]> {
         const expiresAt = new Date();
@@ -88,30 +106,73 @@ export class StoryService {
     async getActiveStories(
         userId: string,
         paginationDto: PaginationDto,
-    ): Promise<PaginatedResponseDto<StoryEngagementDto>> {
+    ): Promise<PaginatedResponseDto<ActiveStoryGroupDto>> {
         const page = Math.max(1, paginationDto.page ?? 1);
         const limit = Math.min(paginationDto.limit ?? 20, 50);
         const skip = (page - 1) * limit;
 
-        const queryBuilder = this.storyRepo
+        const baseQuery = this.storyRepo
+            .createQueryBuilder('story')
+            .where('story.is_active = true')
+            .andWhere('story.expires_at > NOW()')
+            .andWhere('(story.visibility = :publicVisibility OR story.user_id = :userId)', {
+                publicVisibility: StoryVisibilityEnum.Public,
+                userId,
+            });
+
+        const totalUsersRaw = await baseQuery
+            .clone()
+            .select('COUNT(DISTINCT story.user_id)', 'total')
+            .getRawOne<{ total: string }>();
+
+        const pagedUsers = await baseQuery
+            .clone()
+            .select('story.user_id', 'user_id')
+            .addSelect('MAX(story.created_at)', 'latest_story_at')
+            .groupBy('story.user_id')
+            .orderBy('latest_story_at', 'DESC')
+            .offset(skip)
+            .limit(limit)
+            .getRawMany<{ user_id: string }>();
+
+        const pagedUserIds = pagedUsers.map((item) => item.user_id);
+        const total = Number(totalUsersRaw?.total ?? 0);
+        const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+
+        if (pagedUserIds.length === 0) {
+            return {
+                items: [],
+                meta: {
+                    total,
+                    page,
+                    limit,
+                    totalPages,
+                    hasNextPage: false,
+                    hasPreviousPage: page > 1,
+                },
+            };
+        }
+
+        const stories = await this.storyRepo
             .createQueryBuilder('story')
             .leftJoinAndSelect('story.file', 'file')
-            .where('story.is_active = true')
+            .leftJoinAndSelect('story.user', 'user')
+            .leftJoinAndSelect('user.file', 'userFile')
+            .where('story.user_id IN (:...pagedUserIds)', { pagedUserIds })
+            .andWhere('story.is_active = true')
             .andWhere('story.expires_at > NOW()')
             .andWhere('(story.visibility = :publicVisibility OR story.user_id = :userId)', {
                 publicVisibility: StoryVisibilityEnum.Public,
                 userId,
             })
             .orderBy('story.created_at', 'DESC')
-            .skip(skip)
-            .take(limit);
+            .getMany();
 
-        const [items, total] = await queryBuilder.getManyAndCount();
-        const itemsWithEngagement = await this.attachEngagement(items, userId);
-        const totalPages = Math.ceil(total / limit);
+        const itemsWithEngagement = await this.attachEngagement(stories, userId);
+        const groupedStories = this.groupStoriesByUser(itemsWithEngagement, pagedUserIds);
 
         return {
-            items: itemsWithEngagement,
+            items: groupedStories,
             meta: {
                 total,
                 page,
@@ -275,9 +336,39 @@ export class StoryService {
         }));
     }
 
+    private groupStoriesByUser(
+        stories: StoryEngagementDto[],
+        orderedUserIds: string[],
+    ): ActiveStoryGroupDto[] {
+        const groupedStories = new Map<string, ActiveStoryGroupDto>();
+
+        for (const story of stories) {
+            if (!groupedStories.has(story.user_id)) {
+                groupedStories.set(story.user_id, {
+                    user_id: story.user_id,
+                    user_name: story.user?.user_name ?? null,
+                    name: story.user?.name ?? null,
+                    profile_image: story.user?.file?.public_url ?? null,
+                    stories: [],
+                });
+            }
+
+            groupedStories.get(story.user_id)?.stories.push({
+                id: story.id,
+                is_view: story.is_viewed,
+                is_liked: story.is_liked,
+                public_url: story.file?.public_url ?? null,
+            });
+        }
+
+        return orderedUserIds
+            .map((storyUserId) => groupedStories.get(storyUserId))
+            .filter((item): item is ActiveStoryGroupDto => Boolean(item));
+    }
+
     @Cron('*/5 * * * *')
     async deactivateExpiredStories() {
-        await this.storyRepo.update(
+        const result = await this.storyRepo.update(
             {
                 expires_at: LessThan(new Date()),
                 is_active: true,
@@ -286,5 +377,6 @@ export class StoryService {
                 is_active: false,
             },
         );
+        this.logger.log(`Expired story cleanup ran. Deactivated ${result.affected ?? 0} stories.`);
     }
 }
