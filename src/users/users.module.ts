@@ -10,10 +10,11 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { DeleteAccount } from './entities/delete-account.entity';
 import { Contact } from '../contact/entity/contact.entity';
+import { UserLocation } from 'src/user-location/entities/user-location.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, DeleteAccount, Contact]),
+    TypeOrmModule.forFeature([User, UserLocation, DeleteAccount, Contact]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

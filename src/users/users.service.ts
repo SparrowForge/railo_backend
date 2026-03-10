@@ -20,12 +20,16 @@ import { UpdateProfileRollaDto } from './dto/update-profile-rolla.dto';
 import { UpdatProfileUserNameDto } from './dto/update-profile-userName.dto';
 import { UpdatProfileLanguageDto } from './dto/update-profile-language.dto';
 import { UpdatProfileSettingsStatusChangeDto } from './dto/update-profile-settings-status-change.dto';
+import { UserLocation } from 'src/user-location/entities/user-location.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+
+    @InjectRepository(UserLocation)
+    private userLocationRepository: Repository<UserLocation>,
 
     @InjectRepository(DeleteAccount)
     private deleteAccountRepository: Repository<DeleteAccount>,
@@ -126,11 +130,22 @@ export class UsersService {
     };
   }
 
-  findOne(id: string) {
-    return this.userRepository.findOne({
+  async findOne(id: string) {
+    const user = await this.userRepository.findOne({
       where: { id },
+      relations: ["file"],
       withDeleted: false, // Only get non-deleted users
     });
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
+    const UserCurrentLocation = await this.userLocationRepository.findOne({
+      where: { user_id: user.id },
+      order: { created_at: 'DESC' },
+    });
+
+    return { ...user, location: UserCurrentLocation, form: 2025, likes: 156, faves: 46, admieres: 1875 };
   }
 
   findByEmailOrPhoneNumberOrUserName(email: string) {
