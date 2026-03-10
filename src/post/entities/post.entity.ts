@@ -1,6 +1,8 @@
+import { Files } from "src/files/entities/file.entity";
 import { PostTypeEnum } from "./../../common/enums/post-type.enum";
 import { PostVisibilityEnum } from "./../../common/enums/post-visibility.enum";
 import { Column, CreateDateColumn, DeleteDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { User } from "src/users/entities/user.entity";
 
 @Entity('rillo_posts')
 @Index(['userId', 'createdAt'])
@@ -50,10 +52,10 @@ export class Posts {
     @Column({ type: 'geography', spatialFeatureType: 'Point', srid: 4326, nullable: true })
     location: string;
 
-    @Column({ nullable: true })
+    @Column({ type: 'double precision', nullable: true })
     latitude: number;
 
-    @Column({ nullable: true })
+    @Column({ type: 'double precision', nullable: true })
     longitude: number;
 
 
@@ -65,4 +67,15 @@ export class Posts {
 
     @DeleteDateColumn()
     deletedAt?: Date;
+
+    /*Relations */
+    @ManyToOne(() => Files, { nullable: true })
+    @JoinColumn({ name: 'fileId' })
+    file: Files;
+
+
+    @ManyToOne(() => User, { nullable: true })
+    @JoinColumn({ name: 'userId' })
+    user: User;
+
 }

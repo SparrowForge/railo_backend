@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Posts } from './entities/post.entity';
-import { Repository } from 'typeorm';
+import { DeepPartial, Repository } from 'typeorm';
 import { PostLike } from './entities/post-like.entity';
 import { PostVisibilityEnum } from 'src/common/enums/post-visibility.enum';
 import { Follow } from 'src/follow/entities/follow.entity';
@@ -10,6 +11,8 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { PaginatedResponseDto } from 'src/common/dto/paginated-response.dto';
+import { UserLocation } from 'src/user-location/entities/user-location.entity';
+import { FilterPostDto } from './dto/filter-post.dto';
 
 @Injectable()
 export class PostService {
@@ -19,17 +22,28 @@ export class PostService {
 
         @InjectRepository(PostLike)
         private readonly postLikeRepo: Repository<PostLike>,
+
+        @InjectRepository(UserLocation)
+        private readonly userLocationRepo: Repository<UserLocation>,
     ) { }
 
     async createPost(userId: string, dto: CreatePostDto,): Promise<Posts> {
-        const post = this.postRepo.create({
+        const currentUserLocation = await this.userLocationRepo.findOne({
+            where: { user_id: userId },
+            order: { created_at: 'DESC' },
+        });
+        const postData: DeepPartial<Posts> = {
             userId,
             text: dto.text,
             postType: dto.postType,
             visibility: dto.visibility,
             fileId: dto.fileId ?? null,
             locationId: dto.locationId ?? null,
-        });
+            location: (currentUserLocation?.location as unknown as Posts['location']) ?? undefined,
+            latitude: currentUserLocation?.latitude ?? undefined,
+            longitude: currentUserLocation?.longitude ?? undefined,
+        };
+        const post = this.postRepo.create(postData);
 
         return this.postRepo.save(post);
     }
@@ -114,16 +128,34 @@ export class PostService {
     }
 
     async getGlobalFeed(
+        userId: string, // logged-in user
         paginationDto: PaginationDto,
-    ): Promise<PaginatedResponseDto<Posts>> {
+        filters: FilterPostDto
+    ): Promise<PaginatedResponseDto<any>> {
+
         const page = Math.max(1, paginationDto.page ?? 1);
         const limit = Math.min(paginationDto.limit ?? 20, 50);
         const skip = (page - 1) * limit;
+        const currentUserLocation = await this.userLocationRepo.findOne({
+            where: { user_id: userId },
+            order: { created_at: 'DESC' },
+        });
 
         const queryBuilder = this.postRepo
             .createQueryBuilder('post')
+            .addSelect(
+                'CASE WHEN currentUserLike.id IS NOT NULL THEN true ELSE false END',
+                'isLiked',
+            )
             .leftJoinAndSelect('post.user', 'user')
-            .leftJoinAndSelect('post.file', 'file')
+            .leftJoinAndSelect('user.file', 'userFile')
+            .leftJoinAndSelect('post.file', 'postFile')
+            .leftJoin(
+                PostLike,
+                'currentUserLike',
+                'currentUserLike.postId = post.id AND currentUserLike.userId = :userId',
+                { userId },
+            )
             .where('post.visibility = :visibility', {
                 visibility: PostVisibilityEnum.NORMAL,
             })
@@ -132,7 +164,39 @@ export class PostService {
             .skip(skip)
             .take(limit);
 
-        const [items, total] = await queryBuilder.getManyAndCount();
+        if (filters.visibility) {
+            queryBuilder.andWhere('post.visibility = :visibility', {
+                visibility: filters.visibility,
+            });
+        }
+
+        if (currentUserLocation) {
+            queryBuilder.addSelect(
+                `CASE
+                    WHEN post.location IS NULL THEN 0
+                    ELSE ST_Distance(
+                        post.location,
+                        ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography
+                    ) / 1000
+                END`,
+                'distance_km',
+            ).setParameters({
+                longitude: currentUserLocation.longitude,
+                latitude: currentUserLocation.latitude,
+            });
+        } else {
+            queryBuilder.addSelect('0', 'distance_km');
+        }
+
+        const { entities, raw } = await queryBuilder.getRawAndEntities();
+
+        const items = entities.map((post, index) => ({
+            ...post,
+            distance_km: Number(raw[index].distance_km) || 0,
+            isLiked: raw[index].isLiked === true || raw[index].isLiked === 'true',
+        }));
+
+        const total = await queryBuilder.getCount();
         const totalPages = Math.ceil(total / limit);
 
         return {

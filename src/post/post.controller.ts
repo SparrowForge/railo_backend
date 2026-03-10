@@ -7,7 +7,6 @@ import { RolesEnum } from 'src/common/enums/role.enum';
 import { FilterPostDto } from './dto/filter-post.dto';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import type AuthUser from 'src/auth/dto/auth-user';
-import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { Posts } from './entities/post.entity';
 import { UpdatePostDto } from './dto/update-post.dto';
@@ -22,10 +21,10 @@ export class PostController {
     @Get('get-global-feed')
     @ApiOperation({ summary: 'Get all post with pagination and filters', description: 'Retrieves a paginated list of all active post with optional filtering by role, department, and search terms. Requires authentication.', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
-    async getPostList(@Query() filters: PaginationDto) {
+    async getPostList(@CurrentUser() user: AuthUser, @Query() filters: FilterPostDto) {
         const { page, limit } = filters;
         const pagination = { page, limit };
-        const post = await this.postService.getGlobalFeed(pagination);
+        const post = await this.postService.getGlobalFeed(user.userId, pagination, filters);
         return new BaseResponseDto(post, 'Global feed retrieved successfully');
     }
 
