@@ -47,6 +47,16 @@ export class Posts {
     @JoinColumn({ name: 'originalPostId' })
     originalPost: Posts | null;
 
+    @Column({ type: 'geography', spatialFeatureType: 'Point', srid: 4326, nullable: true })
+    location: string;
+
+    @Column({ nullable: true })
+    latitude: number;
+
+    @Column({ nullable: true })
+    longitude: number;
+
+
     @CreateDateColumn()
     createdAt: Date;
 

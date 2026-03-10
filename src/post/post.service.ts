@@ -122,6 +122,8 @@ export class PostService {
 
         const queryBuilder = this.postRepo
             .createQueryBuilder('post')
+            .leftJoinAndSelect('post.user', 'user')
+            .leftJoinAndSelect('post.file', 'file')
             .where('post.visibility = :visibility', {
                 visibility: PostVisibilityEnum.NORMAL,
             })
