@@ -78,7 +78,7 @@ export class CommentService {
                 order: {
                     createdAt: 'ASC', // Facebook-style
                 },
-                relations: ['user'],
+                relations: ['user', 'user.file'],
                 take: limit,
                 skip: skip,
             });
@@ -99,7 +99,7 @@ export class CommentService {
     async getCommentsById(id: string) {
         return await this.commentRepo.findAndCount({
             where: { id },
-            relations: ['user']
+            relations: ['user', 'user.file']
         });
     }
 
