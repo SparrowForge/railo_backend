@@ -1,12 +1,13 @@
 import {
+    BadRequestException,
     Body,
     Controller,
     Delete,
     Get,
     Param,
+    ParseUUIDPipe,
     Post,
     Query,
-    ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { StoryService } from './story.service';
@@ -18,6 +19,7 @@ import { CreateStoryDto } from './dto/create-story.dto';
 import { BaseResponseDto } from 'src/common/dto/base-response.dto';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { Story } from './entities/story.entity';
+import { isUUID } from 'class-validator';
 
 
 @ApiTags('Story')
@@ -72,16 +74,30 @@ export class StoryController {
     }
 
     @Post(':id/view')
-    @ApiOperation({ summary: 'Mark story as viewed', description: 'Marks a story as viewed by the authenticated user.', })
-    @ApiParam({ name: 'id', description: 'Story ID (uuid)', example: 1, type: 'number', })
+    @ApiOperation({ summary: 'Mark stories as viewed', description: 'Marks one or multiple stories as viewed by the authenticated user.', })
+    @ApiParam({
+        name: 'id',
+        description: 'Story IDs as comma-separated UUIDs',
+        example: '0f20d9f7-8e77-4d66-bf66-21266feab0a3,3f0f3077-6a2d-43c0-b188-3b2e1462bbf0',
+        type: 'string',
+    })
     @ApiResponse({ status: 200, description: 'Story viewed successfully', })
     @ApiResponse({ status: 404, description: 'Story not found', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
     async viewStory(
         @CurrentUser() user: AuthUser,
-        @Param('id', ParseUUIDPipe) storyId: string,
+        @Param('id') id: string,
     ) {
-        const storyStats = await this.storyService.viewStory(storyId, user.userId);
+        const storyIds = id
+            .split(',')
+            .map((storyId) => storyId.trim())
+            .filter(Boolean);
+
+        if (storyIds.length === 0 || !storyIds.every((storyId) => isUUID(storyId))) {
+            throw new BadRequestException('id must contain valid UUID values (comma-separated)');
+        }
+
+        const storyStats = await this.storyService.viewStory(storyIds, user.userId);
         return new BaseResponseDto(storyStats, 'Story viewed successfully');
     }
 

@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository, LessThan } from 'typeorm';
+import { In, InsertResult, LessThan, Repository } from 'typeorm';
 import { Story } from './entities/story.entity';
 import { CreateStoryDto } from './dto/create-story.dto';
 import { StoryView } from './entities/story_view.entity';
@@ -67,7 +67,22 @@ export class StoryService implements OnModuleInit {
         return savedStories;
     }
 
-    async viewStory(storyId: string, viewerId: string): Promise<{
+    async viewStory(storyIds: string[], viewerId: string): Promise<Array<{
+        story_id: string;
+        view_count: number;
+        like_count: number;
+        is_viewed: boolean;
+        is_liked: boolean;
+    }>> {
+        return Promise.all(
+            storyIds.map(async (storyId) => {
+                const stats = await this.viewSingleStory(storyId, viewerId);
+                return { story_id: storyId, ...stats };
+            }),
+        );
+    }
+
+    private async viewSingleStory(storyId: string, viewerId: string): Promise<{
         view_count: number;
         like_count: number;
         is_viewed: boolean;
@@ -81,6 +96,19 @@ export class StoryService implements OnModuleInit {
             throw new NotFoundException('Story not found');
         }
 
+        // if (story.user_id === viewerId) {
+        //     return this.getStoryStats(storyId, viewerId);
+        // }
+
+        const alreadyViewed = await this.storyViewRepo.exist({
+            where: { story_id: storyId, viewer_id: viewerId },
+        });
+
+        if (alreadyViewed) {
+            // throw new ForbiddenException('Story already viewed');
+            return this.getStoryStats(storyId, viewerId);
+        }
+
         const insertResult = await this.storyViewRepo
             .createQueryBuilder()
             .insert()
@@ -92,15 +120,30 @@ export class StoryService implements OnModuleInit {
             .orIgnore()
             .execute();
 
-        const inserted =
-            (insertResult.identifiers?.length ?? 0) > 0 ||
-            (insertResult.generatedMaps?.length ?? 0) > 0;
+        const inserted = this.isInsertApplied(insertResult);
 
         if (inserted) {
             await this.storyRepo.increment({ id: storyId }, 'view_count', 1);
         }
 
         return this.getStoryStats(storyId, viewerId);
+    }
+
+    private isInsertApplied(insertResult: InsertResult): boolean {
+        if ((insertResult.identifiers?.length ?? 0) > 0) {
+            return true;
+        }
+
+        if ((insertResult.generatedMaps?.length ?? 0) > 0) {
+            return true;
+        }
+
+        const raw = insertResult.raw as { affectedRows?: number; rowCount?: number } | undefined;
+        if ((raw?.affectedRows ?? 0) > 0 || (raw?.rowCount ?? 0) > 0) {
+            return true;
+        }
+
+        return false;
     }
 
     async getActiveStories(
