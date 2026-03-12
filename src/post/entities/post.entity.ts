@@ -20,8 +20,8 @@ export class Posts {
     visibility: PostVisibilityEnum;
 
     // Uploaded file reference (image/audio/video)
-    @Column({ type: 'uuid', nullable: true })
-    fileId: string | null;
+    @Column({ type: 'number', nullable: true })
+    fileId: number;
 
     // Location selected by user
     @Column({ type: 'uuid', nullable: true })

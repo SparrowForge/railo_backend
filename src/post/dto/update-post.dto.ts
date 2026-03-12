@@ -2,6 +2,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
     IsEnum,
     IsNotEmpty,
+    IsNumber,
     IsOptional,
     IsString,
     IsUUID,
@@ -27,10 +28,10 @@ export class UpdatePostDto {
     @IsEnum(PostVisibilityEnum)
     visibility?: PostVisibilityEnum;
 
-    @ApiPropertyOptional({ description: 'Replace file', })
+    @ApiPropertyOptional({ description: 'Uploaded file ID (image, audio, video)', example: '7b9c2d64-0fcb-4db2-8c20-1cbb6db7d9f3', })
     @IsOptional()
-    @IsUUID()
-    fileId?: string;
+    @IsNumber()
+    fileId?: number;
 
     @ApiPropertyOptional({ description: 'Update location', })
     @IsOptional()

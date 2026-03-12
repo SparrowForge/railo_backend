@@ -38,7 +38,7 @@ export class PostService {
             text: dto.text,
             postType: dto.postType,
             visibility: dto.visibility,
-            fileId: dto.fileId ?? null,
+            fileId: dto.fileId,
             locationId: dto.locationId ?? null,
             location: (currentUserLocation?.location as unknown as Posts['location']) ?? undefined,
             latitude: currentUserLocation?.latitude ?? undefined,

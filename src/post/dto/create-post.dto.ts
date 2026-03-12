@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
     IsEnum,
+    IsNumber,
     IsOptional,
     IsString,
     IsUUID,
@@ -28,8 +29,8 @@ export class CreatePostDto {
 
     @ApiPropertyOptional({ description: 'Uploaded file ID (image, audio, video)', example: '7b9c2d64-0fcb-4db2-8c20-1cbb6db7d9f3', })
     @IsOptional()
-    @IsUUID()
-    fileId?: string;
+    @IsNumber()
+    fileId?: number;
 
     @ApiPropertyOptional({ description: 'Selected location ID', example: '3f92a5b2-7b8f-4fa6-9b21-4c2f5e3a1c0d', })
     @IsOptional()
