@@ -16,6 +16,7 @@ export enum FileType {
   RECEIPT = 'receipt',
   PHOTO = 'photo',
   VIDEO = 'video',
+  AUDIO = 'audio',
   OTHER = 'other',
 }
 

@@ -352,6 +352,8 @@ export class FilesService {
         return 5 * 1024 * 1024; // 5MB for images
       case FileType.VIDEO:
         return 100 * 1024 * 1024; // 100MB for videos
+      case FileType.AUDIO:
+        return 30 * 1024 * 1024; // 30MB for audio
       case FileType.DOCUMENT:
       case FileType.RECEIPT:
         return 20 * 1024 * 1024; // 20MB for documents
@@ -388,6 +390,18 @@ export class FilesService {
           'application/vnd.openxmlformats-officedocument.presentationml.presentation',
           'text/plain',
           'text/csv',
+        ];
+
+      case FileType.AUDIO:
+        return [
+          'audio/mpeg',
+          'audio/mp3',
+          'audio/wav',
+          'audio/ogg',
+          'audio/webm',
+          'audio/aac',
+          'audio/x-m4a',
+          'audio/mp4',
         ];
 
       case FileType.DOCUMENT:

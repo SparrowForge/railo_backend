@@ -56,7 +56,7 @@ export class FileResponseDto {
   @ApiProperty({
     description: 'Type of file',
     enum: FileType,
-    example: FileType.OTHER,
+    example: FileType.AUDIO,
   })
   file_type: FileType;
 
