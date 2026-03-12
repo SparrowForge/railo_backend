@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -147,6 +148,22 @@ export class PostService {
                 'CASE WHEN currentUserLike.id IS NOT NULL THEN true ELSE false END',
                 'isLiked',
             )
+            .addSelect(
+                'userLocation.area',
+                'userArea',
+            )
+            .addSelect(
+                'userLocation.city',
+                'userCity',
+            )
+            .addSelect(
+                'userLocation.state',
+                'userState',
+            )
+            .addSelect(
+                'userLocation.country',
+                'userCountry',
+            )
             .leftJoinAndSelect('post.user', 'user')
             .leftJoinAndSelect('user.file', 'userFile')
             .leftJoinAndSelect('post.file', 'postFile')
@@ -155,6 +172,18 @@ export class PostService {
                 'currentUserLike',
                 'currentUserLike.postId = post.id AND currentUserLike.userId = :userId',
                 { userId },
+            )
+            .leftJoin(
+                UserLocation,
+                'userLocation',
+                `userLocation.id = (
+                    SELECT ul.id
+                    FROM rillo_users_location ul
+                    WHERE ul.user_id = post."userId"
+                      AND ul.deleted_at IS NULL
+                    ORDER BY ul.created_at DESC, ul.id DESC
+                    LIMIT 1
+                )`,
             )
             .where('post.visibility = :visibility', {
                 visibility: PostVisibilityEnum.NORMAL,
@@ -194,6 +223,10 @@ export class PostService {
             ...post,
             distance_km: Number(raw[index].distance_km) || 0,
             isLiked: raw[index].isLiked === true || raw[index].isLiked === 'true',
+            user_area: raw[index].userArea ?? raw[index].userarea ?? null,
+            user_city: raw[index].userCity ?? raw[index].usercity ?? null,
+            user_state: raw[index].userState ?? raw[index].userstate ?? null,
+            user_country: raw[index].userCountry ?? raw[index].usercountry ?? null,
         }));
 
         const total = await queryBuilder.getCount();
