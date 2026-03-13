@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
 
 import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
@@ -13,6 +12,7 @@ import { ConversationRead } from './entities/conversation-read.entity';
 import { Conversation } from 'src/conversation/entities/conversation.entity';
 import { User } from 'src/users/entities/user.entity';
 import { AuthModule } from 'src/auth/auth.module';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -24,11 +24,12 @@ import { AuthModule } from 'src/auth/auth.module';
       Message,
     ]),
     AuthModule,
+    NotificationsModule
   ],
   providers: [
     ChatGateway,
     ChatService,
-    UserPresenceService,
+    UserPresenceService
   ],
   controllers: [ChatController],
   exports: [ChatService, UserPresenceService],

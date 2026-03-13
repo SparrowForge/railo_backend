@@ -25,13 +25,13 @@ socket.on('connect', () => {
     text: 'Hello from Node client!',
   });
 
-  // // test loop
-  // setInterval(() => {
-  //   socket.emit('send_message', {
-  //     conversation_id,
-  //     text: `Ping at ${new Date().toISOString()}`,
-  //   });
-  // }, 3000);
+  // test loop
+  setInterval(() => {
+    socket.emit('send_message', {
+      conversation_id,
+      text: `Ping at ${new Date().toISOString()}`,
+    });
+  }, 3000);
 });
 
 // ✅ receive message

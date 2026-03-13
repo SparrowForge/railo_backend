@@ -19,6 +19,7 @@ import { User } from 'src/users/entities/user.entity';
 import { Repository } from 'typeorm';
 import { Message } from './entities/messages.entity';
 import { message_status } from 'src/common/enums/message-status.enum';
+import { NotificationService } from 'src/notifications/notifications.service';
 
 @WebSocketGateway({
     cors: {
@@ -42,14 +43,38 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         private readonly chatService: ChatService,
 
         private readonly userPresenceService: UserPresenceService,
+        private readonly notificationService: NotificationService,
     ) { }
+
+    private getSocketToken(client: Socket): string | undefined {
+        const authToken = client.handshake.auth?.token;
+        if (typeof authToken === 'string' && authToken.trim()) {
+            return authToken;
+        }
+
+        const authorization = client.handshake.headers.authorization;
+        if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
+            return authorization.slice(7).trim();
+        }
+
+        const accessTokenHeader = client.handshake.headers['x-access-token'];
+        if (typeof accessTokenHeader === 'string' && accessTokenHeader.trim()) {
+            return accessTokenHeader.trim();
+        }
+
+        const queryToken = client.handshake.query.token;
+        if (typeof queryToken === 'string' && queryToken.trim()) {
+            return queryToken.trim();
+        }
+
+        return undefined;
+    }
 
     // 🔹 when client connects
     async handleConnection(client: Socket) {
         try {
             console.log('🔥 socket connected:', client.id);
-            const token = client.handshake.auth?.token;
-            // console.log('token: ', token)
+            const token = this.getSocketToken(client);
 
             const user = await this.chatService.validateSocketUser(token);
             console.log('user: ', user)
@@ -84,9 +109,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 🔹 join conversation room
     @SubscribeMessage('join_conversation')
     async handleJoinConversation(@MessageBody() data: { conversation_id: string }, @ConnectedSocket() client: Socket) {
-        console.log('client.data.user: ', client.data)
-        const token = client.handshake.auth?.token;
-        // console.log('token: ', token)
+        console.log('join_conversation-data: ', data)
+        console.log('join_conversation-client: ', client.data)
+        const token = this.getSocketToken(client);
 
         const user = await this.chatService.validateSocketUser(token);
 
@@ -100,17 +125,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         );
 
         await client.join(`conversation_${data.conversation_id}`);
+        client.emit('socket_response', data);
     }
 
     @SubscribeMessage('is_user_online')
     handleIsUserOnline(@MessageBody() data: { user_id: string }, @ConnectedSocket() client: Socket,) {
+        client.emit('socket_response', data);
+
         client.emit('user_online_status', {
             user_id: data.user_id,
             is_online: this.userPresenceService.isUserOnline(data.user_id),
         });
     }
-
-
 
 
     // 🔹 send message
@@ -120,10 +146,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         @ConnectedSocket() client: Socket,
     ) {
         // const sender_id = client.data.user.id;
-        const token = client.handshake.auth?.token;
+        const token = this.getSocketToken(client);
         const user = await this.chatService.validateSocketUser(token);
         const sender_id = user.id;
-
 
         // 1️⃣ save message (DB is source of truth)
         const message = await this.chatService.send_message(
@@ -138,12 +163,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         await this.chatService.touchConversation(data.conversation_id);
 
         // emit to room
+        client.emit('socket_response', message);
+
         this.server
             .to(`conversation_${data.conversation_id}`)
             .emit('new_message', message);
 
         // 4️⃣ 🔔 PUSH NOTIFICATION LOGIC (HERE 👇)
-        // await this.handlePushNotification(message, sender_id);
+        this.handlePushNotification(message, sender_id).catch(console.error);
     }
 
     private async handlePushNotification(
@@ -179,10 +206,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
             if (!muted) {
                 console.log('Sending push notification');
-                // await this.notificationService.sendPushNotification(
-                //     receiver_id,
-                //     message,
-                // );
+                await this.notificationService.sendNotificationToUser(
+                    {
+                        userId: receiver_id,
+                        title: 'New message',
+                        body: message.text,
+                        payload: {
+                            conversation_id: conversation_id,
+                            message_id: message.id,
+                            sender_id: sender_id,
+                        },
+                    }
+                );
             }
         }
     }
@@ -193,7 +228,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         @ConnectedSocket() client: Socket,
     ) {
         // const user_id = client.data.user.id;
-        const token = client.handshake.auth?.token;
+        const token = this.getSocketToken(client);
         const user = await this.chatService.validateSocketUser(token);
         const user_id = user.id;
 
@@ -209,6 +244,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 user_id,
                 typing: true,
             });
+        client.emit('socket_response', {
+            conversation_id: data.conversation_id,
+            user_id,
+            typing: true,
+        });
     }
 
     @SubscribeMessage('typing_stop')
@@ -217,7 +257,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         @ConnectedSocket() client: Socket,
     ) {
         // const user_id = client.data.user.id;
-        const token = client.handshake.auth?.token;
+        const token = this.getSocketToken(client);
         const user = await this.chatService.validateSocketUser(token);
         const user_id = user.id;
 
@@ -233,6 +273,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 user_id,
                 typing: false,
             });
+        client.emit('socket_response', {
+            conversation_id: data.conversation_id,
+            user_id,
+            typing: false,
+        });
+
     }
 
 
@@ -241,16 +287,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         @MessageBody() data: { message_id: string },
         @ConnectedSocket() client: Socket,
     ) {
-        console.log('message_delivered id', data.message_id)
+        console.log('message_delivered id: ', data.message_id)
         // const user_id = client.data.user.id;
-        const token = client.handshake.auth?.token;
+        const token = this.getSocketToken(client);
         const user = await this.chatService.validateSocketUser(token);
         const user_id = user.id;
 
         const message = await this.messageRepo.findOneBy({
             id: data.message_id,
         });
-        console.log('message', message)
+        console.log('message: ', message)
         if (!message) {
             console.log('Message not found')
             return;
@@ -270,6 +316,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 message_id: message.id,
                 status: message_status.delivered,
             });
+        client.emit('socket_response', {
+            message_id: message.id,
+            status: message_status.delivered,
+        });
+
     }
 
 
@@ -279,7 +330,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         @ConnectedSocket() client: Socket,
     ) {
         // const user_id = client.data.user.id;
-        const token = client.handshake.auth?.token;
+        const token = this.getSocketToken(client);
         const user = await this.chatService.validateSocketUser(token);
         const user_id = user.id;
 
@@ -305,6 +356,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
                 status: 'read',
                 reader_id: user_id,
             });
+
+        client.emit('socket_response', {
+            conversation_id: data.conversation_id,
+            status: 'read',
+            reader_id: user_id,
+        });
     }
 
 

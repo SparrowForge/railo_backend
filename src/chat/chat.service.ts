@@ -265,7 +265,7 @@ export class ChatService {
         };
     }
 
-    async validateSocketUser(token: string): Promise<{ id: string }> {
+    async validateSocketUser(token?: string): Promise<{ id: string }> {
         if (!token) {
             throw new Error('No token provided');
         }
@@ -283,8 +283,9 @@ export class ChatService {
         }
 
         // OPTIONAL but recommended (comment out if you want max speed)
-        const userExists = await this.userRepo.find({
+        const userExists = await this.userRepo.findOne({
             where: { id: payload.sub },
+            select: ['id'],
         });
 
         if (!userExists) {
