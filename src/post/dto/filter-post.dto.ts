@@ -3,6 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { PostVisibilityEnum } from 'src/common/enums/post-visibility.enum';
+import { UserInteractionEnum } from './user-interaction-type.enum';
 
 export class FilterPostDto extends PaginationDto {
   @ApiProperty({ description: 'User Guid Id', example: 'xxxx-xxxx-xxxx-xxxx', required: true })
@@ -15,4 +16,8 @@ export class FilterPostDto extends PaginationDto {
   @IsOptional()
   visibility: PostVisibilityEnum;
 
+  @ApiProperty({ description: 'Post type', enum: UserInteractionEnum, example: UserInteractionEnum.MyRolla, })
+  @IsEnum(UserInteractionEnum, { message: `Allowed values are: ${Object.values(UserInteractionEnum).join(', ')}` })
+  @IsOptional()
+  userInteractionType: UserInteractionEnum;
 }

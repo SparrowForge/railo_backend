@@ -44,7 +44,7 @@ export class PostController {
     async getUserProfileFeed(@CurrentUser() user: AuthUser, @Query() filters: FilterPostDto) {
         const { page, limit } = filters;
         const pagination = { page, limit };
-        const post = await this.postService.getUserProfileFeed(pagination, filters.userId, user.userId);
+        const post = await this.postService.getUserProfileFeed(pagination, filters.userId, user.userId, filters.userInteractionType);
         return new BaseResponseDto(post, 'User profile feed list retrieved successfully');
     }
 

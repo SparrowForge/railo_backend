@@ -14,6 +14,7 @@ import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { PaginatedResponseDto } from 'src/common/dto/paginated-response.dto';
 import { UserLocation } from 'src/user-location/entities/user-location.entity';
 import { FilterPostDto } from './dto/filter-post.dto';
+import { UserInteractionEnum } from './dto/user-interaction-type.enum';
 
 @Injectable()
 export class PostService {
@@ -293,6 +294,7 @@ export class PostService {
         paginationDto: PaginationDto,
         profileUserId: string, // profile owner
         viewerUserId: string, // logged-in user
+        userInteractionType?: UserInteractionEnum,
     ): Promise<PaginatedResponseDto<Posts>> {
         const page = Math.max(1, paginationDto.page ?? 1);
         const limit = Math.min(paginationDto.limit ?? 20, 50);
@@ -307,6 +309,15 @@ export class PostService {
             .orderBy('post.createdAt', 'DESC')
             .take(limit)
             .skip(skip);
+
+        if (userInteractionType) {
+            if (userInteractionType === UserInteractionEnum.MyRolla) {
+                queryBuilder
+                    .andWhere('post.userId = :profileUserId', {
+                        profileUserId,
+                    });
+            }
+        }
 
         // 🔒 privacy rule
         if (viewerUserId !== profileUserId) {
