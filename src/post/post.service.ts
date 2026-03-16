@@ -299,16 +299,81 @@ export class PostService {
         const page = Math.max(1, paginationDto.page ?? 1);
         const limit = Math.min(paginationDto.limit ?? 20, 50);
         const skip = (page - 1) * limit;
+        const userId = viewerUserId;
+
+        const currentUserLocation = await this.userLocationRepo.findOne({
+            where: { user_id: userId },
+            order: { created_at: 'DESC' },
+        });
 
         const queryBuilder = this.postRepo
             .createQueryBuilder('post')
+            .addSelect(
+                'CASE WHEN currentUserLike.id IS NOT NULL THEN true ELSE false END',
+                'isLiked',
+            )
+            .addSelect(
+                'userLocation.area',
+                'userArea',
+            )
+            .addSelect(
+                'userLocation.city',
+                'userCity',
+            )
+            .addSelect(
+                'userLocation.state',
+                'userState',
+            )
+            .addSelect(
+                'userLocation.country',
+                'userCountry',
+            )
+            .leftJoinAndSelect('post.user', 'user')
+            .leftJoinAndSelect('user.file', 'userFile')
+            .leftJoinAndSelect('post.file', 'postFile')
+            .leftJoin(
+                PostLike,
+                'currentUserLike',
+                'currentUserLike.postId = post.id AND currentUserLike.userId = :userId',
+                { userId },
+            )
+            .leftJoin(
+                UserLocation,
+                'userLocation',
+                `userLocation.id = (
+                    SELECT ul.id
+                    FROM rillo_users_location ul
+                    WHERE ul.user_id = post."userId"
+                      AND ul.deleted_at IS NULL
+                    ORDER BY ul.created_at DESC, ul.id DESC
+                    LIMIT 1
+                )`,
+            )
             .where('post.userId = :profileUserId', {
                 profileUserId,
             })
             .andWhere('post.deletedAt IS NULL')
             .orderBy('post.createdAt', 'DESC')
-            .take(limit)
-            .skip(skip);
+            .skip(skip)
+            .take(limit);
+
+        if (currentUserLocation) {
+            queryBuilder.addSelect(
+                `CASE
+                    WHEN post.location IS NULL THEN 0
+                    ELSE ST_Distance(
+                        post.location,
+                        ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography
+                    ) / 1000
+                END`,
+                'distance_km',
+            ).setParameters({
+                longitude: currentUserLocation.longitude,
+                latitude: currentUserLocation.latitude,
+            });
+        } else {
+            queryBuilder.addSelect('0', 'distance_km');
+        }
 
         if (userInteractionType) {
             if (userInteractionType === UserInteractionEnum.MyRolla) {
@@ -342,7 +407,19 @@ export class PostService {
             );
         }
 
-        const [items, total] = await queryBuilder.getManyAndCount();
+        const { entities, raw } = await queryBuilder.getRawAndEntities();
+
+        const items = entities.map((post, index) => ({
+            ...post,
+            distance_km: Number(raw[index].distance_km) || 0,
+            isLiked: raw[index].isLiked === true || raw[index].isLiked === 'true',
+            user_area: raw[index].userArea ?? raw[index].userarea ?? null,
+            user_city: raw[index].userCity ?? raw[index].usercity ?? null,
+            user_state: raw[index].userState ?? raw[index].userstate ?? null,
+            user_country: raw[index].userCountry ?? raw[index].usercountry ?? null,
+        }));
+
+        const total = await queryBuilder.getCount();
         const totalPages = Math.ceil(total / limit);
 
         return {
@@ -356,6 +433,63 @@ export class PostService {
                 hasPreviousPage: page > 1,
             },
         };
+
+        // const queryBuilder = this.postRepo
+        //     .createQueryBuilder('post')
+        //     .where('post.userId = :profileUserId', {
+        //         profileUserId,
+        //     })
+        //     .andWhere('post.deletedAt IS NULL')
+        //     .orderBy('post.createdAt', 'DESC')
+        //     .take(limit)
+        //     .skip(skip);
+
+        // if (userInteractionType) {
+        //     if (userInteractionType === UserInteractionEnum.MyRolla) {
+        //         queryBuilder
+        //             .andWhere('post.userId = :profileUserId', {
+        //                 profileUserId,
+        //             });
+        //     } else if (userInteractionType === UserInteractionEnum.MyReplies) {
+        //         queryBuilder
+        //             .andWhere('post.userId = :profileUserId', {
+        //                 profileUserId,
+        //             });
+        //     } else if (userInteractionType === UserInteractionEnum.MyVotes) {
+        //         queryBuilder
+        //             .andWhere('post.userId = :profileUserId', {
+        //                 profileUserId,
+        //             });
+        //     } else if (userInteractionType === UserInteractionEnum.MyPins) {
+        //         queryBuilder
+        //             .andWhere('post.userId = :profileUserId', {
+        //                 profileUserId,
+        //             });
+        //     }
+        // }
+
+        // 🔒 privacy rule
+        // if (viewerUserId !== profileUserId) {
+        //     queryBuilder.andWhere(
+        //         'post.visibility != :visibility',
+        //         { visibility: PostVisibilityEnum.PRIVATE },
+        //     );
+        // }
+
+        // const [items, total] = await queryBuilder.getManyAndCount();
+        // const totalPages = Math.ceil(total / limit);
+
+        // return {
+        //     items,
+        //     meta: {
+        //         total,
+        //         page,
+        //         limit,
+        //         totalPages,
+        //         hasNextPage: page < totalPages,
+        //         hasPreviousPage: page > 1,
+        //     },
+        // };
     }
 
     async toggleLike(postId: string, userId: string) {
