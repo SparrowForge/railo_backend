@@ -16,6 +16,8 @@ import { message_status } from 'src/common/enums/message-status.enum';
 import { FilterChatDto } from './dto/filter-chat-list.dto';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { FilterMessageDto } from './dto/filter-message.dto';
+import { UserLocation } from 'src/user-location/entities/user-location.entity';
+import { Files } from 'src/files/entities/file.entity';
 
 @Injectable()
 export class ChatService {
@@ -187,14 +189,16 @@ export class ChatService {
                 'rillo_users',
                 'u',
                 `
-      (
-        (c.user_one_id = :user_id AND u.id = c.user_two_id)
-        OR
-        (c.user_two_id = :user_id AND u.id = c.user_one_id)
-      )
-      `,
+                (
+                    (c.user_one_id = :user_id AND u.id = c.user_two_id)
+                    OR
+                    (c.user_two_id = :user_id AND u.id = c.user_one_id)
+                )
+                `,
                 { user_id: filters.userId },
             )
+            .leftJoin(UserLocation, 'location', 'location.user_id = u.id')
+            .leftJoin(Files, 'file', 'file.id = u.file_id')
             .select([
                 'c.id AS conversation_id',
                 'c.user_one_id',
@@ -204,6 +208,14 @@ export class ChatService {
                 'u.id AS other_user_id',
                 'u.user_name AS username',
                 'u.name AS full_name',
+                'location.latitude AS latitude',
+                'location.longitude AS longitude',
+                'location.location AS location',
+                'location.area AS area',
+                'location.city AS city',
+                'location.state AS state',
+                'location.country AS country',
+                'file.public_url AS profile_image',
             ])
             .orderBy('c.updated_at', 'DESC')
             .take(limit)
@@ -253,6 +265,12 @@ export class ChatService {
                 last_message,
                 unread_count,
                 is_active: row.is_active,
+                location: row.location,
+                area: row.area,
+                city: row.city,
+                state: row.state,
+                country: row.country,
+                profile_image: row.profile_image
             });
         }
 

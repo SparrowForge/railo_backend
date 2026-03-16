@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -22,7 +23,8 @@ export class ChatRequestService {
         const { page = 1, limit = 1000000000000 } = paginationDto;
         const skip = (page - 1) * limit;
         return await this.chatRequestRepo.find({
-            where: { receiver_id: filters?.user_id, status: chat_request_status.pending },
+            // where: { receiver_id: filters?.user_id, status: chat_request_status.pending },
+            relations: ['sender_user', 'receiver_user', 'sender_user.file', 'receiver_user.file'],
             take: limit,
             skip: skip,
             order: { created_at: 'DESC' },
@@ -35,7 +37,8 @@ export class ChatRequestService {
         const skip = (page - 1) * limit;
 
         return this.chatRequestRepo.find({
-            where: { sender_id: filters?.user_id, status: chat_request_status.pending, },
+            // where: { sender_id: filters?.user_id, status: chat_request_status.pending, },
+            relations: ['sender_user', 'receiver_user', 'sender_user.file', 'receiver_user.file'],
             take: limit,
             skip: skip,
             order: { created_at: 'DESC', },

@@ -8,5 +8,11 @@ export class ChatListItem {
     last_message: Message | null;
     unread_count: number;
     is_active: boolean;
+    location: string;
+    area: string;
+    city: string;
+    state: string;
+    country: string;
+    profile_image: string;
 }
 
