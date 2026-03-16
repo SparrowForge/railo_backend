@@ -316,6 +316,21 @@ export class PostService {
                     .andWhere('post.userId = :profileUserId', {
                         profileUserId,
                     });
+            } else if (userInteractionType === UserInteractionEnum.MyReplies) {
+                queryBuilder
+                    .andWhere('post.userId = :profileUserId', {
+                        profileUserId,
+                    });
+            } else if (userInteractionType === UserInteractionEnum.MyVotes) {
+                queryBuilder
+                    .andWhere('post.userId = :profileUserId', {
+                        profileUserId,
+                    });
+            } else if (userInteractionType === UserInteractionEnum.MyPins) {
+                queryBuilder
+                    .andWhere('post.userId = :profileUserId', {
+                        profileUserId,
+                    });
             }
         }
 
