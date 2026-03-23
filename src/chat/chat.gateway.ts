@@ -142,7 +142,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 🔹 send message
     @SubscribeMessage('send_message')
     async handleSendMessage(
-        @MessageBody() data: { conversation_id: string; text: string },
+        @MessageBody() data: { conversation_id?: string; receiver_id?: string; text: string },
         @ConnectedSocket() client: Socket,
     ) {
         // const sender_id = client.data.user.id;
@@ -154,19 +154,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         const message = await this.chatService.send_message(
             {
                 conversation_id: data.conversation_id,
+                receiver_id: data.receiver_id,
                 text: data.text,
             },
             sender_id,
         );
 
         // update chat list order- updatedAt
-        await this.chatService.touchConversation(data.conversation_id);
+        await this.chatService.touchConversation(message.conversation_id);
 
         // emit to room
         client.emit('socket_response', message);
 
         this.server
-            .to(`conversation_${data.conversation_id}`)
+            .to(`conversation_${message.conversation_id}`)
             .emit('new_message', message);
 
         // 4️⃣ 🔔 PUSH NOTIFICATION LOGIC (HERE 👇)

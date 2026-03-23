@@ -8,6 +8,8 @@ import { UpdateChatRequestStatusDto } from './dto/update-chat-request.dto';
 import { chat_request_status } from 'src/common/enums/chat-request.enum';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { FilterChatDto } from './dto/filter-chat-request.dto';
+import { Message } from 'src/chat/entities/messages.entity';
+import { message_status } from 'src/common/enums/message-status.enum';
 
 @Injectable()
 export class ChatRequestService {
@@ -16,7 +18,10 @@ export class ChatRequestService {
         private readonly chatRequestRepo: Repository<ChatRequest>,
 
         @InjectRepository(Conversation)
-        private readonly conversationRepo: Repository<Conversation>
+        private readonly conversationRepo: Repository<Conversation>,
+
+        @InjectRepository(Message)
+        private readonly messageRepo: Repository<Message>,
     ) { }
 
     async get_incoming_requests(paginationDto: PaginationDto, filters?: Partial<FilterChatDto>): Promise<ChatRequest[]> {
@@ -46,8 +51,7 @@ export class ChatRequestService {
     }
 
 
-    async send_request(sender_id: string, receiver_id: string) {
-        // 1. check active conversation
+    async send_request(sender_id: string, receiver_id: string, message: string) {
         const conversation = await this.conversationRepo.findOne({
             where: [
                 { user_one_id: sender_id, user_two_id: receiver_id },
@@ -55,11 +59,20 @@ export class ChatRequestService {
             ],
         });
 
-        if (conversation && conversation.is_active) {
-            throw new BadRequestException('Chat already allowed');
+        if (conversation?.is_active) {
+            const savedMessage = await this.messageRepo.save({
+                conversation_id: conversation.id,
+                sender_id,
+                text: message.trim(),
+                status: message_status.sent,
+            });
+
+            return {
+                conversation_id: conversation.id,
+                message: savedMessage,
+            };
         }
 
-        // 2. latest request between users
         const last_request = await this.chatRequestRepo.findOne({
             where: [
                 { sender_id, receiver_id },
@@ -68,29 +81,62 @@ export class ChatRequestService {
             order: { created_at: 'DESC' },
         });
 
-        if (last_request) {
-            if (last_request.status === chat_request_status.pending) {
-                throw new BadRequestException('Request already pending');
-            }
+        if (last_request?.status === chat_request_status.pending && last_request.sender_id !== sender_id) {
+            throw new ForbiddenException('You can reply after accepting the chat request');
+        }
 
-            if (last_request.status === chat_request_status.rejected) {
-                const cooldown_hours = 24;
-                const diff =
-                    Date.now() - new Date(last_request.created_at).getTime();
+        if (last_request?.status === chat_request_status.revoked) {
+            throw new ForbiddenException('Chat permission revoked');
+        }
 
-                if (diff < cooldown_hours * 60 * 60 * 1000) {
-                    throw new BadRequestException(
-                        'You can resend request after cooldown'
-                    );
-                }
-            }
+        if (last_request?.status === chat_request_status.rejected) {
+            const cooldown_hours = 24;
+            const diff =
+                Date.now() - new Date(last_request.created_at).getTime();
 
-            if (last_request.status === chat_request_status.revoked) {
-                throw new ForbiddenException('Chat permission revoked');
+            if (diff < cooldown_hours * 60 * 60 * 1000) {
+                throw new BadRequestException(
+                    'You can resend request after cooldown'
+                );
             }
         }
 
-        return this.chatRequestRepo.save({ sender_id, receiver_id });
+        const pendingConversation = conversation ?? await this.conversationRepo.save({
+            user_one_id: sender_id,
+            user_two_id: receiver_id,
+            is_active: false,
+        });
+
+        const directedRequest = await this.chatRequestRepo.findOneBy({
+            sender_id,
+            receiver_id,
+        });
+
+        const request = directedRequest
+            ? await this.chatRequestRepo.save({
+                ...directedRequest,
+                status: chat_request_status.pending,
+                conversation_id: pendingConversation.id,
+            })
+            : await this.chatRequestRepo.save({
+                sender_id,
+                receiver_id,
+                status: chat_request_status.pending,
+                conversation_id: pendingConversation.id,
+            });
+
+        const savedMessage = await this.messageRepo.save({
+            conversation_id: pendingConversation.id,
+            sender_id,
+            text: message.trim(),
+            status: message_status.sent,
+        });
+
+        return {
+            ...request,
+            conversation_id: pendingConversation.id,
+            message: savedMessage,
+        };
     }
 
 
@@ -119,22 +165,36 @@ export class ChatRequestService {
 
         // create conversation ONLY when accepted
         if (status === chat_request_status.accepted) {
-            const existing = await this.conversationRepo.findOne({
-                where: [
-                    { user_one_id: request.sender_id, user_two_id: request.receiver_id },
-                    { user_one_id: request.receiver_id, user_two_id: request.sender_id },
-                ],
-            });
+            let conversation = request.conversation_id
+                ? await this.conversationRepo.findOneBy({ id: request.conversation_id })
+                : null;
 
-            if (existing) {
-                return existing;
+            if (!conversation) {
+                conversation = await this.conversationRepo.findOne({
+                    where: [
+                        { user_one_id: request.sender_id, user_two_id: request.receiver_id },
+                        { user_one_id: request.receiver_id, user_two_id: request.sender_id },
+                    ],
+                });
             }
 
-            return this.conversationRepo.save({
-                user_one_id: request.sender_id,
-                user_two_id: request.receiver_id,
-                is_active: true,
-            });
+            if (!conversation) {
+                conversation = await this.conversationRepo.save({
+                    user_one_id: request.sender_id,
+                    user_two_id: request.receiver_id,
+                    is_active: true,
+                });
+            } else if (!conversation.is_active) {
+                conversation.is_active = true;
+                conversation = await this.conversationRepo.save(conversation);
+            }
+
+            if (!request.conversation_id) {
+                request.conversation_id = conversation.id;
+                await this.chatRequestRepo.save(request);
+            }
+
+            return conversation;
         }
 
         // rejected → end flow

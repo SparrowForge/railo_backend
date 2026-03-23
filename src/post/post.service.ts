@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
@@ -76,7 +77,7 @@ export class PostService {
         return this.postRepo.save(post);
     }
 
-    async getPostById(postId: string) {
+    async getPostById(userId: string, postId: string) {
         const post = await this.postRepo.findOneBy({
             id: postId,
         });
@@ -85,7 +86,17 @@ export class PostService {
             throw new ForbiddenException();
         }
 
-        return post;
+        const res = await this.getGlobalFeed(
+            userId, // logged-in user
+            { limit: 1, page: 1 },
+            {
+                page: 1,
+                limit: 1,
+            },
+            postId
+        )
+
+        return res?.items[0];
     }
 
     async softDelete(postId: string, userId: string) {
@@ -132,7 +143,8 @@ export class PostService {
     async getGlobalFeed(
         userId: string, // logged-in user
         paginationDto: PaginationDto,
-        filters: FilterPostDto
+        filters: FilterPostDto,
+        postId?: string
     ): Promise<PaginatedResponseDto<any>> {
 
         const page = Math.max(1, paginationDto.page ?? 1);
@@ -194,6 +206,11 @@ export class PostService {
             .skip(skip)
             .take(limit);
 
+        if (postId) {
+            queryBuilder.andWhere('post.id = :postId', {
+                postId,
+            });
+        }
         if (filters.visibility) {
             queryBuilder.andWhere('post.visibility = :visibility', {
                 visibility: filters.visibility,

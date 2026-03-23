@@ -13,11 +13,13 @@ import { Conversation } from 'src/conversation/entities/conversation.entity';
 import { User } from 'src/users/entities/user.entity';
 import { AuthModule } from 'src/auth/auth.module';
 import { NotificationsModule } from 'src/notifications/notifications.module';
+import { ChatRequest } from 'src/chat-request/entities/chat-request.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       User,
+      ChatRequest,
       Conversation,
       ConversationMute,
       ConversationRead,

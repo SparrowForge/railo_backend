@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID } from 'class-validator';
+import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
 export class CreateChatRequestDto {
     @ApiProperty({
@@ -8,4 +8,12 @@ export class CreateChatRequestDto {
     })
     @IsUUID()
     receiver_id: string;
+
+    @ApiProperty({
+        description: 'initial chat request message',
+        example: 'Hi, I would like to chat with you.',
+    })
+    @IsString()
+    @IsNotEmpty()
+    message: string;
 }

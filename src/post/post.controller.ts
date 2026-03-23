@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { PostService } from './post.service';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -34,7 +35,7 @@ export class PostController {
     async getUserFeed(@Query() filters: FilterPostDto) {
         const { page, limit } = filters;
         const pagination = { page, limit };
-        const post = await this.postService.getUserFeed(pagination, filters.userId);
+        const post = await this.postService.getUserFeed(pagination, filters.userId ?? '');
         return new BaseResponseDto(post, 'User feed list retrieved successfully');
     }
 
@@ -44,17 +45,26 @@ export class PostController {
     async getUserProfileFeed(@CurrentUser() user: AuthUser, @Query() filters: FilterPostDto) {
         const { page, limit } = filters;
         const pagination = { page, limit };
-        const post = await this.postService.getUserProfileFeed(pagination, filters.userId, user.userId, filters.userInteractionType);
+        const post = await this.postService.getUserProfileFeed(pagination, (filters.userId ?? ''), user.userId, filters.userInteractionType);
         return new BaseResponseDto(post, 'User profile feed list retrieved successfully');
     }
 
     @Get('get-post-by-id/:id')
     @ApiOperation({ summary: 'Get all post with pagination and filters', description: 'Retrieves a paginated list of all active post with optional filtering by role, department, and search terms. Requires authentication.', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
-    async getPostById(@CurrentUser() user: AuthUser, @Param('id') id: string,) {
-        const post = await this.postService.getPostById(id);
+    async getPostById(@CurrentUser() user: AuthUser, @Param('id') id: string,): Promise<BaseResponseDto<any>> {
+        const post = await this.postService.getPostById(user.userId, id);
         return new BaseResponseDto(post, 'Post retrieved successfully');
     }
+
+    @Get('get-post-by-id/:id/dashboard')
+    @ApiOperation({ summary: 'Get all post with pagination and filters', description: 'Retrieves a paginated list of all active post with optional filtering by role, department, and search terms. Requires authentication.', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async getPostByIdDashboard(@CurrentUser() user: AuthUser, @Param('id') id: string,): Promise<BaseResponseDto<any>> {
+        const post = await this.postService.getPostById(user.userId, id);
+        return new BaseResponseDto(post, 'Post retrieved successfully');
+    }
+
 
     @Post()
     @ApiOperation({

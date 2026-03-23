@@ -14,6 +14,9 @@ export class ChatRequest {
     @Column({ type: 'uuid' })
     receiver_id: string;
 
+    @Column({ type: 'uuid', nullable: true })
+    conversation_id?: string;
+
     @Column({ type: 'enum', enum: chat_request_status, default: chat_request_status.pending, })
     status: chat_request_status;
 

@@ -18,6 +18,12 @@ export class ChatRequestDto {
     receiver_id: string;
 
     @ApiProperty({
+        example: '8c9f2f8a-4b2a-4c7d-9d1e-91a8a9a1f111',
+        required: false,
+    })
+    conversation_id?: string;
+
+    @ApiProperty({
         enum: chat_request_status,
         example: chat_request_status.pending,
     })

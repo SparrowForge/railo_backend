@@ -51,6 +51,7 @@ export class ChatRequestController {
         const result = await this.chatRequestService.send_request(
             user.userId,
             dto.receiver_id,
+            dto.message,
         );
         return new BaseResponseDto(result, 'Chat request send successfully');
     }

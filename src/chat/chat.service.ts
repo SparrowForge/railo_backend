@@ -18,12 +18,17 @@ import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { FilterMessageDto } from './dto/filter-message.dto';
 import { UserLocation } from 'src/user-location/entities/user-location.entity';
 import { Files } from 'src/files/entities/file.entity';
+import { ChatRequest } from 'src/chat-request/entities/chat-request.entity';
+import { chat_request_status } from 'src/common/enums/chat-request.enum';
 
 @Injectable()
 export class ChatService {
     constructor(
         @InjectRepository(User)
         private readonly userRepo: Repository<User>,
+
+        @InjectRepository(ChatRequest)
+        private readonly chatRequestRepo: Repository<ChatRequest>,
 
         @InjectRepository(Message)
         private readonly messageRepo: Repository<Message>,
@@ -43,8 +48,9 @@ export class ChatService {
     ) { }
 
     async send_message(dto: SendMessageDto, user_id: string) {
-        const isValidConversation = await this.validateConversationAccess(
-            dto.conversation_id,
+        const conversation_id = await this.resolveConversationForMessage(dto, user_id);
+        const isValidConversation = await this.validateConversationMessagingAccess(
+            conversation_id,
             user_id,
         );
         if (!isValidConversation) {
@@ -54,7 +60,7 @@ export class ChatService {
         if (dto.reply_to_message_id) {
             const parent = await this.messageRepo.findOneBy({
                 id: dto.reply_to_message_id,
-                conversation_id: dto.conversation_id,
+                conversation_id,
             });
 
             if (!parent) {
@@ -63,7 +69,7 @@ export class ChatService {
         }
 
         return this.messageRepo.save({
-            conversation_id: dto.conversation_id,
+            conversation_id,
             sender_id: user_id,
             text: dto.text,
             reply_to_message_id: dto.reply_to_message_id,
@@ -180,6 +186,10 @@ export class ChatService {
         paginationDto: PaginationDto,
         filters: Partial<FilterChatDto>
     ) {
+        if (filters.request_status === chat_request_status.pending) {
+            return this.get_pending_chat_list(paginationDto, filters);
+        }
+
         const { page = 1, limit = 1000000000000 } = paginationDto;
         const skip = (page - 1) * limit;
 
@@ -217,6 +227,10 @@ export class ChatService {
                 'location.country AS country',
                 'file.public_url AS profile_image',
             ])
+            .where('(c.user_one_id = :user_id OR c.user_two_id = :user_id)', {
+                user_id: filters.userId,
+            })
+            .andWhere('c.is_active = :is_active', { is_active: true })
             .orderBy('c.updated_at', 'DESC')
             .take(limit)
             .skip(skip);
@@ -265,6 +279,7 @@ export class ChatService {
                 last_message,
                 unread_count,
                 is_active: row.is_active,
+                request_status: chat_request_status.accepted,
                 location: row.location,
                 area: row.area,
                 city: row.city,
@@ -279,6 +294,104 @@ export class ChatService {
             next_cursor:
                 conversations.length > 0
                     ? conversations[conversations.length - 1].updated_at
+                    : null,
+        };
+    }
+
+    private async get_pending_chat_list(
+        paginationDto: PaginationDto,
+        filters: Partial<FilterChatDto>,
+    ) {
+        const { page = 1, limit = 1000000000000 } = paginationDto;
+        const skip = (page - 1) * limit;
+
+        const pendingRequests = await this.chatRequestRepo
+            .createQueryBuilder('cr')
+            .innerJoin(Conversation, 'c', 'c.id = cr.conversation_id')
+            .innerJoin(
+                'rillo_users',
+                'u',
+                `
+                (
+                    (c.user_one_id = :user_id AND u.id = c.user_two_id)
+                    OR
+                    (c.user_two_id = :user_id AND u.id = c.user_one_id)
+                )
+                `,
+                { user_id: filters.userId },
+            )
+            .leftJoin(UserLocation, 'location', 'location.user_id = u.id')
+            .leftJoin(Files, 'file', 'file.id = u.file_id')
+            .select([
+                'cr.id AS request_id',
+                'cr.status AS request_status',
+                'cr.created_at',
+                'cr.updated_at',
+                'c.id AS conversation_id',
+                'u.id AS other_user_id',
+                'u.user_name AS username',
+                'u.name AS full_name',
+                'location.latitude AS latitude',
+                'location.longitude AS longitude',
+                'location.location AS location',
+                'location.area AS area',
+                'location.city AS city',
+                'location.state AS state',
+                'location.country AS country',
+                'file.public_url AS profile_image',
+            ])
+            .where('(cr.sender_id = :user_id OR cr.receiver_id = :user_id)', {
+                user_id: filters.userId,
+            })
+            .andWhere('cr.status = :status', { status: chat_request_status.pending })
+            .andWhere('c.is_active = :is_active', { is_active: false })
+            .orderBy('cr.updated_at', 'DESC')
+            .take(limit)
+            .skip(skip)
+            .getRawMany();
+
+        const result: ChatListItem[] = [];
+
+        for (const row of pendingRequests) {
+            const last_message = await this.messageRepo.findOne({
+                where: { conversation_id: row.conversation_id },
+                order: { created_at: 'DESC' },
+            });
+
+            const unread_count = await this.messageRepo
+                .createQueryBuilder('m')
+                .where('m.conversation_id = :conversation_id', {
+                    conversation_id: row.conversation_id,
+                })
+                .andWhere('m.sender_id != :user_id', {
+                    user_id: filters.userId,
+                })
+                .getCount();
+
+            result.push({
+                conversation_id: row.conversation_id,
+                other_user_id: row.other_user_id,
+                username: row.username,
+                full_name: row.full_name,
+                last_message,
+                unread_count,
+                is_active: false,
+                request_id: row.request_id,
+                request_status: row.request_status,
+                location: row.location,
+                area: row.area,
+                city: row.city,
+                state: row.state,
+                country: row.country,
+                profile_image: row.profile_image,
+            });
+        }
+
+        return {
+            data: result,
+            next_cursor:
+                pendingRequests.length > 0
+                    ? pendingRequests[pendingRequests.length - 1].updated_at
                     : null,
         };
     }
@@ -322,8 +435,47 @@ export class ChatService {
             id: conversation_id,
         });
 
-        if (!conversation || !conversation.is_active) {
+        this.ensureConversationParticipant(conversation, user_id);
+        return true;
+    }
+
+    async validateConversationMessagingAccess(
+        conversation_id: string,
+        user_id: string,
+    ): Promise<boolean> {
+        const conversation = await this.conversationRepo.findOneBy({
+            id: conversation_id,
+        });
+
+        this.ensureConversationParticipant(conversation, user_id);
+        const existingConversation = conversation as Conversation;
+
+        if (existingConversation.is_active) {
+            return true;
+        }
+
+        const pendingRequest = await this.chatRequestRepo.findOne({
+            where: { conversation_id, status: chat_request_status.pending },
+            order: { created_at: 'DESC' },
+        });
+
+        if (!pendingRequest) {
             throw new ForbiddenException('Chat permission revoked');
+        }
+
+        if (pendingRequest.sender_id !== user_id) {
+            throw new ForbiddenException('You can reply after accepting the chat request');
+        }
+
+        return true;
+    }
+
+    private ensureConversationParticipant(
+        conversation: Conversation | null,
+        user_id: string,
+    ) {
+        if (!conversation) {
+            throw new NotFoundException('Conversation not found');
         }
 
         if (
@@ -332,7 +484,100 @@ export class ChatService {
         ) {
             throw new ForbiddenException('Not part of this conversation');
         }
-        return true;
+    }
+
+    private async resolveConversationForMessage(
+        dto: SendMessageDto,
+        user_id: string,
+    ): Promise<string> {
+        if (dto.conversation_id) {
+            return dto.conversation_id;
+        }
+
+        if (!dto.receiver_id) {
+            throw new BadRequestException('receiver_id is required for the first message');
+        }
+
+        if (dto.receiver_id === user_id) {
+            throw new BadRequestException('You cannot message yourself');
+        }
+
+        const existingConversation = await this.conversationRepo.findOne({
+            where: [
+                { user_one_id: user_id, user_two_id: dto.receiver_id },
+                { user_one_id: dto.receiver_id, user_two_id: user_id },
+            ],
+        });
+
+        if (existingConversation?.is_active) {
+            return existingConversation.id;
+        }
+
+        const latestRequest = await this.chatRequestRepo.findOne({
+            where: [
+                { sender_id: user_id, receiver_id: dto.receiver_id },
+                { sender_id: dto.receiver_id, receiver_id: user_id },
+            ],
+            order: { created_at: 'DESC' },
+        });
+
+        if (latestRequest?.status === chat_request_status.pending) {
+            if (latestRequest.sender_id !== user_id) {
+                throw new ForbiddenException('You can reply after accepting the chat request');
+            }
+
+            if (!latestRequest.conversation_id && existingConversation) {
+                latestRequest.conversation_id = existingConversation.id;
+                await this.chatRequestRepo.save(latestRequest);
+            }
+
+            const conversation_id = latestRequest.conversation_id ?? existingConversation?.id;
+
+            if (!conversation_id) {
+                throw new BadRequestException('Pending chat request has no conversation');
+            }
+
+            return conversation_id;
+        }
+
+        if (latestRequest?.status === chat_request_status.revoked) {
+            throw new ForbiddenException('Chat permission revoked');
+        }
+
+        if (latestRequest?.status === chat_request_status.rejected) {
+            const cooldown_hours = 24;
+            const diff = Date.now() - new Date(latestRequest.created_at).getTime();
+
+            if (diff < cooldown_hours * 60 * 60 * 1000) {
+                throw new BadRequestException('You can resend request after cooldown');
+            }
+        }
+
+        const pendingConversation = existingConversation ?? await this.conversationRepo.save({
+            user_one_id: user_id,
+            user_two_id: dto.receiver_id,
+            is_active: false,
+        });
+
+        const directedRequest = await this.chatRequestRepo.findOneBy({
+            sender_id: user_id,
+            receiver_id: dto.receiver_id,
+        });
+
+        if (directedRequest) {
+            directedRequest.status = chat_request_status.pending;
+            directedRequest.conversation_id = pendingConversation.id;
+            await this.chatRequestRepo.save(directedRequest);
+        } else {
+            await this.chatRequestRepo.save({
+                sender_id: user_id,
+                receiver_id: dto.receiver_id,
+                status: chat_request_status.pending,
+                conversation_id: pendingConversation.id,
+            });
+        }
+
+        return pendingConversation.id;
     }
 
     async touchConversation(conversation_id: string) {
