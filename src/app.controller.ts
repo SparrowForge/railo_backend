@@ -15,9 +15,9 @@ export class AppController {
     return new BaseResponseDto({ status: 'ok' }, 'API is healthy');
   }
 
-  @Get('config')
-  @ApiOperation({ summary: 'Check API health' })
-  getConfig(): BaseResponseDto<any> {
-    return new BaseResponseDto({ host: this.configService.get('DB_HOST') }, 'Config fetched successfully');
-  }
+  // @Get('config')
+  // @ApiOperation({ summary: 'Check API health' })
+  // getConfig(): BaseResponseDto<any> {
+  //   return new BaseResponseDto({ dbHost: this.configService.get('DB_HOST') }, 'Config fetched successfully');
+  // }
 }
