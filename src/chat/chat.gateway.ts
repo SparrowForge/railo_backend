@@ -165,7 +165,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         // emit to room
         client.emit('socket_response', message);
 
-        this.server
+        client
             .to(`conversation_${message.conversation_id}`)
             .emit('new_message', message);
 

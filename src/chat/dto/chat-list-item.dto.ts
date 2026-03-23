@@ -9,8 +9,8 @@ export class ChatListItem {
     last_message: Message | null;
     unread_count: number;
     is_active: boolean;
-    request_id?: string;
-    request_status?: chat_request_status;
+    request_id: string | null;
+    request_status: chat_request_status;
     location: string;
     area: string;
     city: string;

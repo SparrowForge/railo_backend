@@ -146,9 +146,11 @@ export class ChatRequestService {
     }: UpdateChatRequestStatusDto) {
         const request = await this.chatRequestRepo.findOneBy({ id: request_id });
 
-        if (!request) {
+        if (!request)
             throw new BadRequestException('Request not found');
-        }
+
+        if (!request.conversation_id)
+            throw new BadRequestException('Conversation not found');
 
         // only receiver can accept / reject
         if (request.receiver_id !== action_user_id) {
@@ -169,30 +171,32 @@ export class ChatRequestService {
                 ? await this.conversationRepo.findOneBy({ id: request.conversation_id })
                 : null;
 
-            if (!conversation) {
-                conversation = await this.conversationRepo.findOne({
-                    where: [
-                        { user_one_id: request.sender_id, user_two_id: request.receiver_id },
-                        { user_one_id: request.receiver_id, user_two_id: request.sender_id },
-                    ],
-                });
-            }
+            // if (!conversation) {
+            //     conversation = await this.conversationRepo.findOne({
+            //         where: [
+            //             { user_one_id: request.sender_id, user_two_id: request.receiver_id },
+            //             { user_one_id: request.receiver_id, user_two_id: request.sender_id },
+            //         ],
+            //     });
+            // }
 
-            if (!conversation) {
-                conversation = await this.conversationRepo.save({
-                    user_one_id: request.sender_id,
-                    user_two_id: request.receiver_id,
-                    is_active: true,
-                });
-            } else if (!conversation.is_active) {
+            // if (!conversation) {
+            //     conversation = await this.conversationRepo.save({
+            //         user_one_id: request.sender_id,
+            //         user_two_id: request.receiver_id,
+            //         is_active: true,
+            //     });
+            // } else if (!conversation.is_active) {
+            if (conversation) {
                 conversation.is_active = true;
                 conversation = await this.conversationRepo.save(conversation);
             }
+            // }
 
-            if (!request.conversation_id) {
-                request.conversation_id = conversation.id;
-                await this.chatRequestRepo.save(request);
-            }
+            // if (!request.conversation_id) {
+            //     request.conversation_id = conversation.id;
+            //     await this.chatRequestRepo.save(request);
+            // }
 
             return conversation;
         }

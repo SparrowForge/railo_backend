@@ -209,12 +209,9 @@ export class ChatService {
         paginationDto: PaginationDto,
         filters: Partial<FilterChatDto>
     ) {
-        if (filters.request_status === chat_request_status.pending) {
-            return this.get_pending_chat_list(paginationDto, filters);
-        }
-
         const { page = 1, limit = 1000000000000 } = paginationDto;
         const skip = (page - 1) * limit;
+        const isPendingRequestList = filters.request_status === chat_request_status.pending;
 
         const qb = this.conversationRepo
             .createQueryBuilder('c')
@@ -252,64 +249,41 @@ export class ChatService {
             ])
             .where('(c.user_one_id = :user_id OR c.user_two_id = :user_id)', {
                 user_id: filters.userId,
-            })
-            .andWhere('c.is_active = :is_active', { is_active: true })
-            .orderBy('c.updated_at', 'DESC')
+            });
+
+        if (isPendingRequestList) {
+            qb.innerJoin(
+                ChatRequest,
+                'cr',
+                'cr.conversation_id = c.id AND cr.status = :request_status',
+                { request_status: chat_request_status.pending },
+            )
+                .addSelect([
+                    'cr.id AS request_id',
+                    'cr.status AS request_status',
+                ])
+                .andWhere('c.is_active = :is_active', { is_active: false });
+        } else {
+            qb.andWhere('c.is_active = :is_active', { is_active: true });
+        }
+
+        qb.orderBy('c.updated_at', 'DESC')
             .take(limit)
             .skip(skip);
-
-        // if (filters.cursor) {
-        //     qb.andWhere('c.updated_at < :cursor', { cursor: filters.cursor });
-        // }
 
         const conversations = await qb.getRawMany();
 
         const result: ChatListItem[] = [];
 
         for (const row of conversations) {
-            const last_message = await this.messageRepo.findOne({
-                where: { conversation_id: row.conversation_id },
-                order: { created_at: 'DESC' },
-            });
-
-            const read = await this.readRepo.findOneBy({
-                conversation_id: row.conversation_id,
-                user_id: filters.userId,
-            });
-
-            const unread_qb = this.messageRepo
-                .createQueryBuilder('m')
-                .where('m.conversation_id = :conversation_id', {
-                    conversation_id: row.conversation_id,
-                })
-                .andWhere('m.sender_id != :user_id', {
-                    user_id: filters.userId,
-                });
-
-            if (read?.last_read_at) {
-                unread_qb.andWhere('m.created_at > :last_read_at', {
-                    last_read_at: read.last_read_at,
-                });
-            }
-
-            const unread_count = await unread_qb.getCount();
-
-            result.push({
-                conversation_id: row.conversation_id,
-                other_user_id: row.other_user_id,
-                username: row.username,
-                full_name: row.full_name,
-                last_message,
-                unread_count,
-                is_active: row.is_active,
-                request_status: chat_request_status.accepted,
-                location: row.location,
-                area: row.area,
-                city: row.city,
-                state: row.state,
-                country: row.country,
-                profile_image: row.profile_image
-            });
+            result.push(
+                await this.buildChatListItem(row, filters.userId!, {
+                    request_id: isPendingRequestList ? row.request_id : null,
+                    request_status: isPendingRequestList
+                        ? row.request_status
+                        : chat_request_status.accepted,
+                }),
+            );
         }
 
         return {
@@ -317,104 +291,6 @@ export class ChatService {
             next_cursor:
                 conversations.length > 0
                     ? conversations[conversations.length - 1].updated_at
-                    : null,
-        };
-    }
-
-    private async get_pending_chat_list(
-        paginationDto: PaginationDto,
-        filters: Partial<FilterChatDto>,
-    ) {
-        const { page = 1, limit = 1000000000000 } = paginationDto;
-        const skip = (page - 1) * limit;
-
-        const pendingRequests = await this.chatRequestRepo
-            .createQueryBuilder('cr')
-            .innerJoin(Conversation, 'c', 'c.id = cr.conversation_id')
-            .innerJoin(
-                'rillo_users',
-                'u',
-                `
-                (
-                    (c.user_one_id = :user_id AND u.id = c.user_two_id)
-                    OR
-                    (c.user_two_id = :user_id AND u.id = c.user_one_id)
-                )
-                `,
-                { user_id: filters.userId },
-            )
-            .leftJoin(UserLocation, 'location', 'location.user_id = u.id')
-            .leftJoin(Files, 'file', 'file.id = u.file_id')
-            .select([
-                'cr.id AS request_id',
-                'cr.status AS request_status',
-                'cr.created_at',
-                'cr.updated_at',
-                'c.id AS conversation_id',
-                'u.id AS other_user_id',
-                'u.user_name AS username',
-                'u.name AS full_name',
-                'location.latitude AS latitude',
-                'location.longitude AS longitude',
-                'location.location AS location',
-                'location.area AS area',
-                'location.city AS city',
-                'location.state AS state',
-                'location.country AS country',
-                'file.public_url AS profile_image',
-            ])
-            .where('(cr.sender_id = :user_id OR cr.receiver_id = :user_id)', {
-                user_id: filters.userId,
-            })
-            .andWhere('cr.status = :status', { status: chat_request_status.pending })
-            .andWhere('c.is_active = :is_active', { is_active: false })
-            .orderBy('cr.updated_at', 'DESC')
-            .take(limit)
-            .skip(skip)
-            .getRawMany();
-
-        const result: ChatListItem[] = [];
-
-        for (const row of pendingRequests) {
-            const last_message = await this.messageRepo.findOne({
-                where: { conversation_id: row.conversation_id },
-                order: { created_at: 'DESC' },
-            });
-
-            const unread_count = await this.messageRepo
-                .createQueryBuilder('m')
-                .where('m.conversation_id = :conversation_id', {
-                    conversation_id: row.conversation_id,
-                })
-                .andWhere('m.sender_id != :user_id', {
-                    user_id: filters.userId,
-                })
-                .getCount();
-
-            result.push({
-                conversation_id: row.conversation_id,
-                other_user_id: row.other_user_id,
-                username: row.username,
-                full_name: row.full_name,
-                last_message,
-                unread_count,
-                is_active: false,
-                request_id: row.request_id,
-                request_status: row.request_status,
-                location: row.location,
-                area: row.area,
-                city: row.city,
-                state: row.state,
-                country: row.country,
-                profile_image: row.profile_image,
-            });
-        }
-
-        return {
-            data: result,
-            next_cursor:
-                pendingRequests.length > 0
-                    ? pendingRequests[pendingRequests.length - 1].updated_at
                     : null,
         };
     }
@@ -507,6 +383,60 @@ export class ChatService {
         ) {
             throw new ForbiddenException('Not part of this conversation');
         }
+    }
+
+    private async buildChatListItem(
+        row: any,
+        user_id: string,
+        requestMeta: {
+            request_id: string | null;
+            request_status: chat_request_status;
+        },
+    ): Promise<ChatListItem> {
+        const last_message = await this.messageRepo.findOne({
+            where: { conversation_id: row.conversation_id },
+            order: { created_at: 'DESC' },
+        });
+
+        const read = await this.readRepo.findOneBy({
+            conversation_id: row.conversation_id,
+            user_id,
+        });
+
+        const unread_qb = this.messageRepo
+            .createQueryBuilder('m')
+            .where('m.conversation_id = :conversation_id', {
+                conversation_id: row.conversation_id,
+            })
+            .andWhere('m.sender_id != :user_id', {
+                user_id,
+            });
+
+        if (read?.last_read_at) {
+            unread_qb.andWhere('m.created_at > :last_read_at', {
+                last_read_at: read.last_read_at,
+            });
+        }
+
+        const unread_count = await unread_qb.getCount();
+
+        return {
+            conversation_id: row.conversation_id,
+            other_user_id: row.other_user_id,
+            username: row.username,
+            full_name: row.full_name,
+            last_message,
+            unread_count,
+            is_active: row.is_active,
+            request_id: requestMeta.request_id,
+            request_status: requestMeta.request_status,
+            location: row.location,
+            area: row.area,
+            city: row.city,
+            state: row.state,
+            country: row.country,
+            profile_image: row.profile_image,
+        };
     }
 
     private async resolveConversationForMessage(
