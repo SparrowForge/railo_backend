@@ -9,6 +9,7 @@ import { FilterMessageDto } from './dto/filter-message.dto';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import type AuthUser from 'src/auth/dto/auth-user';
 import { ReadAllChatRequestDto } from './dto/read-all-char-req.dto';
+import { GetOrCreateConversationDto } from './dto/get-or-create-conversation.dto';
 
 @ApiTags('Chat')
 @ApiBearerAuth()
@@ -35,6 +36,23 @@ export class ChatController {
         const pagination = { page, limit };
         const chat = await this.chatService.get_messages(pagination, chatFilters);
         return new BaseResponseDto(chat, 'Chat list retrieved successfully');
+    }
+
+    @Post('get-or-create-conversation')
+    @ApiOperation({ summary: 'Get or create conversation with another user' })
+    @ApiResponse({ status: 201, description: 'Conversation retrieved successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request - validation error', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async getOrCreateConversation(
+        @CurrentUser() user: AuthUser,
+        @Body() dto: GetOrCreateConversationDto,
+    ) {
+        const conversation = await this.chatService.getOrCreateConversation(
+            user.userId,
+            dto.user_id,
+        );
+
+        return new BaseResponseDto(conversation, 'Conversation retrieved successfully');
     }
 
     @Post('mark-as-read')

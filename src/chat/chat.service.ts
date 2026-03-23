@@ -77,6 +77,29 @@ export class ChatService {
         });
     }
 
+    async getOrCreateConversation(user_id: string, other_user_id: string) {
+        if (user_id === other_user_id) {
+            throw new BadRequestException('You cannot create a conversation with yourself');
+        }
+
+        const existingConversation = await this.conversationRepo.findOne({
+            where: [
+                { user_one_id: user_id, user_two_id: other_user_id },
+                { user_one_id: other_user_id, user_two_id: user_id },
+            ],
+        });
+
+        if (existingConversation) {
+            return existingConversation;
+        }
+
+        return this.conversationRepo.save({
+            user_one_id: user_id,
+            user_two_id: other_user_id,
+            is_active: false,
+        });
+    }
+
     async get_messages(
         paginationDto: PaginationDto,
         filters: Partial<FilterMessageDto>
@@ -490,33 +513,24 @@ export class ChatService {
         dto: SendMessageDto,
         user_id: string,
     ): Promise<string> {
-        if (dto.conversation_id) {
-            return dto.conversation_id;
-        }
-
-        if (!dto.receiver_id) {
-            throw new BadRequestException('receiver_id is required for the first message');
-        }
-
-        if (dto.receiver_id === user_id) {
-            throw new BadRequestException('You cannot message yourself');
-        }
-
-        const existingConversation = await this.conversationRepo.findOne({
-            where: [
-                { user_one_id: user_id, user_two_id: dto.receiver_id },
-                { user_one_id: dto.receiver_id, user_two_id: user_id },
-            ],
+        const conversation = await this.conversationRepo.findOneBy({
+            id: dto.conversation_id,
         });
 
-        if (existingConversation?.is_active) {
+        this.ensureConversationParticipant(conversation, user_id);
+        const existingConversation = conversation as Conversation;
+        const receiver_id = existingConversation.user_one_id === user_id
+            ? existingConversation.user_two_id
+            : existingConversation.user_one_id;
+
+        if (existingConversation.is_active) {
             return existingConversation.id;
         }
 
         const latestRequest = await this.chatRequestRepo.findOne({
             where: [
-                { sender_id: user_id, receiver_id: dto.receiver_id },
-                { sender_id: dto.receiver_id, receiver_id: user_id },
+                { sender_id: user_id, receiver_id },
+                { sender_id: receiver_id, receiver_id: user_id },
             ],
             order: { created_at: 'DESC' },
         });
@@ -555,13 +569,13 @@ export class ChatService {
 
         const pendingConversation = existingConversation ?? await this.conversationRepo.save({
             user_one_id: user_id,
-            user_two_id: dto.receiver_id,
+            user_two_id: receiver_id,
             is_active: false,
         });
 
         const directedRequest = await this.chatRequestRepo.findOneBy({
             sender_id: user_id,
-            receiver_id: dto.receiver_id,
+            receiver_id,
         });
 
         if (directedRequest) {
@@ -571,7 +585,7 @@ export class ChatService {
         } else {
             await this.chatRequestRepo.save({
                 sender_id: user_id,
-                receiver_id: dto.receiver_id,
+                receiver_id,
                 status: chat_request_status.pending,
                 conversation_id: pendingConversation.id,
             });
