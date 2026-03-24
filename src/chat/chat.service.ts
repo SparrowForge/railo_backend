@@ -42,6 +42,9 @@ export class ChatService {
         @InjectRepository(ConversationMute)
         private readonly muteRepo: Repository<ConversationMute>,
 
+        @InjectRepository(Files)
+        private readonly fileRepo: Repository<Files>,
+
         private readonly jwtService: JwtService,
 
         private readonly userPresenceService: UserPresenceService,
@@ -68,13 +71,26 @@ export class ChatService {
             }
         }
 
-        return this.messageRepo.save({
+        const message = await this.messageRepo.save({
             conversation_id,
             sender_id: user_id,
             text: dto.text,
             reply_to_message_id: dto.reply_to_message_id,
             status: message_status.sent,
+            file_id: dto.file_id,
         });
+
+        if (message.file_id) {
+            const file = await this.fileRepo.findOneBy({
+                id: message.file_id,
+            });
+
+            if (file) {
+                message.file = file;
+            }
+        }
+
+        return message;
     }
 
     async getOrCreateConversation(user_id: string, other_user_id: string) {

@@ -159,52 +159,24 @@ export class ChatRequestService {
 
         // prevent re-processing
         if (request.status !== chat_request_status.pending) {
-            throw new BadRequestException('Request already processed');
+            // throw new BadRequestException('Request already processed');
         }
 
         request.status = status;
         await this.chatRequestRepo.save(request);
 
         // create conversation ONLY when accepted
-        if (status === chat_request_status.accepted) {
-            let conversation = request.conversation_id
-                ? await this.conversationRepo.findOneBy({ id: request.conversation_id })
-                : null;
+        let conversation = request.conversation_id
+            ? await this.conversationRepo.findOneBy({ id: request.conversation_id })
+            : null;
 
-            // if (!conversation) {
-            //     conversation = await this.conversationRepo.findOne({
-            //         where: [
-            //             { user_one_id: request.sender_id, user_two_id: request.receiver_id },
-            //             { user_one_id: request.receiver_id, user_two_id: request.sender_id },
-            //         ],
-            //     });
-            // }
-
-            // if (!conversation) {
-            //     conversation = await this.conversationRepo.save({
-            //         user_one_id: request.sender_id,
-            //         user_two_id: request.receiver_id,
-            //         is_active: true,
-            //     });
-            // } else if (!conversation.is_active) {
-            if (conversation) {
-                conversation.is_active = true;
-                conversation = await this.conversationRepo.save(conversation);
-            }
-            // }
-
-            // if (!request.conversation_id) {
-            //     request.conversation_id = conversation.id;
-            //     await this.chatRequestRepo.save(request);
-            // }
-
-            return conversation;
+        if (conversation) {
+            conversation.is_active = status === chat_request_status.accepted ? true : false;
+            conversation = await this.conversationRepo.save(conversation);
+        } else {
+            throw new BadRequestException('Conversation not found');
         }
-
-        // rejected → end flow
-        return {
-            message: 'Request rejected successfully',
-        };
+        return conversation;
     }
 
 }

@@ -14,6 +14,7 @@ import { User } from 'src/users/entities/user.entity';
 import { AuthModule } from 'src/auth/auth.module';
 import { NotificationsModule } from 'src/notifications/notifications.module';
 import { ChatRequest } from 'src/chat-request/entities/chat-request.entity';
+import { Files } from '../files/entities/file.entity';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ChatRequest } from 'src/chat-request/entities/chat-request.entity';
       ConversationMute,
       ConversationRead,
       Message,
+      Files
     ]),
     AuthModule,
     NotificationsModule
