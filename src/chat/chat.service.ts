@@ -150,6 +150,7 @@ export class ChatService {
         // 3️⃣ build query
         const qb = this.messageRepo
             .createQueryBuilder('m')
+            .leftJoinAndSelect('m.file', 'file')
             .where('m.conversation_id = :conversation_id', { conversation_id: filters.conversationId });
 
         // if (cleared_at) {
