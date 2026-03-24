@@ -1,17 +1,36 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { conversation_type } from "src/common/enums/conversation-type.enum";
 import { User } from "src/users/entities/user.entity";
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm";
+import { ConversationParticipant } from "./conversation-participant.entity";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from "typeorm";
+import { Files } from "../../files/entities/file.entity";
 
 @Entity('rillo_conversation')
 export class Conversation {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
-    @Column({ type: 'uuid' })
+    @Column({ type: 'uuid', nullable: true })
     user_one_id: string;
 
-    @Column({ type: 'uuid' })
+    @Column({ type: 'uuid', nullable: true })
     user_two_id: string;
+
+    @Column({
+        type: 'enum',
+        enum: conversation_type,
+        default: conversation_type.direct,
+    })
+    type: conversation_type;
+
+    @Column({ nullable: true })
+    title: string;
+
+    @Column({ nullable: true })
+    image_id: number;
+
+    @Column({ type: 'uuid', nullable: true })
+    created_by: string;
 
     @Column({ default: true })
     is_active: boolean;
@@ -28,9 +47,21 @@ export class Conversation {
     @JoinColumn({ name: 'user_one_id' })
     user_one: User;
 
+    @ApiProperty({ description: 'File object', type: () => Files, })
+    @ManyToOne(() => Files, { nullable: true })
+    @JoinColumn({ name: 'image_id' })
+    image: Files;
+
 
     @ApiProperty({ description: 'User object', type: () => User, })
     @ManyToOne(() => User, { nullable: true })
     @JoinColumn({ name: 'user_two_id' })
     user_two: User;
+
+    @OneToMany(
+        () => ConversationParticipant,
+        (participant) => participant.conversation,
+    )
+    participants: ConversationParticipant[];
+
 }

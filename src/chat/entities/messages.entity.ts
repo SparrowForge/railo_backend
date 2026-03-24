@@ -1,6 +1,6 @@
 import { Files } from "../../files/entities/file.entity";
 import { message_status } from "./../../common/enums/message-status.enum";
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from "typeorm";
 
 @Entity('rillo_message')
 export class Message {
@@ -22,14 +22,11 @@ export class Message {
     @Column({ type: 'enum', enum: message_status, default: message_status.sent })
     status: message_status;
 
-    @Column({ nullable: true })
-    file_id: number;
+    @Column('int', { array: true, nullable: true })
+    file_ids: number[] | null;
 
     @CreateDateColumn()
     created_at: Date;
 
-    /*Relations */
-    @ManyToOne(() => Files, { nullable: true })
-    @JoinColumn({ name: 'file_id' })
-    file: Files;
+    files?: Files[];
 }

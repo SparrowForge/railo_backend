@@ -9,6 +9,7 @@ import { FilterMessageDto } from './dto/filter-message.dto';
 import { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import type AuthUser from 'src/auth/dto/auth-user';
 import { ReadAllChatRequestDto } from './dto/read-all-char-req.dto';
+import { CreateGroupConversationDto } from './dto/create-group-conversation.dto';
 import { GetOrCreateConversationDto } from './dto/get-or-create-conversation.dto';
 
 @ApiTags('Chat')
@@ -53,6 +54,23 @@ export class ChatController {
         );
 
         return new BaseResponseDto(conversation, 'Conversation retrieved successfully');
+    }
+
+    @Post('create-group-conversation')
+    @ApiOperation({ summary: 'Create a group conversation' })
+    @ApiResponse({ status: 201, description: 'Group conversation created successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request - validation error', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async createGroupConversation(
+        @CurrentUser() user: AuthUser,
+        @Body() dto: CreateGroupConversationDto,
+    ) {
+        const conversation = await this.chatService.createGroupConversation(
+            user.userId,
+            dto,
+        );
+
+        return new BaseResponseDto(conversation, 'Group conversation created successfully');
     }
 
     @Post('mark-as-read')

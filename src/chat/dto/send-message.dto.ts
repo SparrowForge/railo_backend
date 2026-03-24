@@ -1,4 +1,4 @@
-import { IsUUID, IsString, IsNotEmpty, IsOptional, MaxLength, IsNumber } from 'class-validator';
+import { IsUUID, IsString, IsNotEmpty, IsOptional, MaxLength, IsNumber, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class SendMessageDto {
@@ -28,8 +28,9 @@ export class SendMessageDto {
     @IsUUID()
     reply_to_message_id?: string;
 
-    @ApiProperty({ description: 'File id', required: false, example: 1, })
+    @ApiProperty({ description: 'File ids', required: false, example: [1, 2], type: [Number] })
     @IsOptional()
-    @IsNumber()
-    file_id?: number;
+    @IsArray()
+    @IsNumber({}, { each: true })
+    file_ids?: number[];
 }

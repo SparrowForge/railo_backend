@@ -3,6 +3,7 @@ import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/com
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Conversation } from 'src/conversation/entities/conversation.entity';
+import { ConversationParticipant } from 'src/conversation/entities/conversation-participant.entity';
 import { ChatRequest } from './entities/chat-request.entity';
 import { UpdateChatRequestStatusDto } from './dto/update-chat-request.dto';
 import { chat_request_status } from 'src/common/enums/chat-request.enum';
@@ -10,6 +11,7 @@ import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { FilterChatDto } from './dto/filter-chat-request.dto';
 import { Message } from 'src/chat/entities/messages.entity';
 import { message_status } from 'src/common/enums/message-status.enum';
+import { conversation_type } from 'src/common/enums/conversation-type.enum';
 
 @Injectable()
 export class ChatRequestService {
@@ -19,6 +21,9 @@ export class ChatRequestService {
 
         @InjectRepository(Conversation)
         private readonly conversationRepo: Repository<Conversation>,
+
+        @InjectRepository(ConversationParticipant)
+        private readonly participantRepo: Repository<ConversationParticipant>,
 
         @InjectRepository(Message)
         private readonly messageRepo: Repository<Message>,
@@ -54,12 +59,13 @@ export class ChatRequestService {
     async send_request(sender_id: string, receiver_id: string, message: string) {
         const conversation = await this.conversationRepo.findOne({
             where: [
-                { user_one_id: sender_id, user_two_id: receiver_id },
-                { user_one_id: receiver_id, user_two_id: sender_id },
+                { user_one_id: sender_id, user_two_id: receiver_id, type: conversation_type.direct },
+                { user_one_id: receiver_id, user_two_id: sender_id, type: conversation_type.direct },
             ],
         });
 
         if (conversation?.is_active) {
+            await this.ensureDirectParticipants(conversation);
             const savedMessage = await this.messageRepo.save({
                 conversation_id: conversation.id,
                 sender_id,
@@ -104,8 +110,12 @@ export class ChatRequestService {
         const pendingConversation = conversation ?? await this.conversationRepo.save({
             user_one_id: sender_id,
             user_two_id: receiver_id,
+            type: conversation_type.direct,
             is_active: false,
+            created_by: sender_id,
         });
+
+        await this.ensureDirectParticipants(pendingConversation);
 
         const directedRequest = await this.chatRequestRepo.findOneBy({
             sender_id,
@@ -177,6 +187,30 @@ export class ChatRequestService {
             throw new BadRequestException('Conversation not found');
         }
         return conversation;
+    }
+
+    private async ensureDirectParticipants(conversation: Conversation) {
+        if (!conversation.user_one_id || !conversation.user_two_id) {
+            return;
+        }
+
+        const participants = await this.participantRepo.find({
+            where: { conversation_id: conversation.id },
+            select: ['user_id'],
+        });
+
+        const existing = new Set(participants.map((participant) => participant.user_id));
+        const missing = [conversation.user_one_id, conversation.user_two_id]
+            .filter((userId) => !existing.has(userId))
+            .map((userId, index) => ({
+                conversation_id: conversation.id,
+                user_id: userId,
+                is_admin: index === 0,
+            }));
+
+        if (missing.length > 0) {
+            await this.participantRepo.save(missing);
+        }
     }
 
 }

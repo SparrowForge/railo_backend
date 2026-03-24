@@ -24,14 +24,11 @@ import { NotificationService } from 'src/notifications/notifications.service';
 @WebSocketGateway({
     cors: {
         origin: '*',
-        //  credentials: true,
     },
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     server: Server;
-
-    private static online_users = new Map<string, Set<string>>();
 
     constructor(
         @InjectRepository(User)
@@ -70,22 +67,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return undefined;
     }
 
-    // 🔹 when client connects
     async handleConnection(client: Socket) {
         try {
-            console.log('🔥 socket connected:', client.id);
             const token = this.getSocketToken(client);
-
             const user = await this.chatService.validateSocketUser(token);
-            console.log('user: ', user)
-
 
             client.data.user = user;
-
             this.userPresenceService.addSocket(user.id, client.id);
-
-            // notify others
-            this.server.emit('user_online', { user_id: user.id, });
+            this.server.emit('user_online', { user_id: user.id });
         } catch {
             client.disconnect();
         }
@@ -106,22 +95,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
     }
 
-    // 🔹 join conversation room
     @SubscribeMessage('join_conversation')
-    async handleJoinConversation(@MessageBody() data: { conversation_id: string }, @ConnectedSocket() client: Socket) {
-        console.log('join_conversation-data: ', data)
-        console.log('join_conversation-client: ', client.data)
+    async handleJoinConversation(
+        @MessageBody() data: { conversation_id: string },
+        @ConnectedSocket() client: Socket,
+    ) {
         const token = this.getSocketToken(client);
-
         const user = await this.chatService.validateSocketUser(token);
-
-        // const user_id = client.data.user.id;
-        const user_id = user.id;
-        console.log('user_id: ', user_id)
 
         await this.chatService.validateConversationAccess(
             data.conversation_id,
-            user_id,
+            user.id,
         );
 
         await client.join(`conversation_${data.conversation_id}`);
@@ -129,49 +113,43 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     @SubscribeMessage('is_user_online')
-    handleIsUserOnline(@MessageBody() data: { user_id: string }, @ConnectedSocket() client: Socket,) {
+    handleIsUserOnline(
+        @MessageBody() data: { user_id: string },
+        @ConnectedSocket() client: Socket,
+    ) {
         client.emit('socket_response', data);
-
         client.emit('user_online_status', {
             user_id: data.user_id,
             is_online: this.userPresenceService.isUserOnline(data.user_id),
         });
     }
 
-
-    // 🔹 send message
     @SubscribeMessage('send_message')
     async handleSendMessage(
-        @MessageBody() data: { conversation_id: string; text: string, reply_to_message_id?: string, file_id?: number },
+        @MessageBody() data: { conversation_id: string; text: string; reply_to_message_id?: string; file_ids?: number[] },
         @ConnectedSocket() client: Socket,
     ) {
-        // const sender_id = client.data.user.id;
         const token = this.getSocketToken(client);
         const user = await this.chatService.validateSocketUser(token);
         const sender_id = user.id;
 
-        // 1️⃣ save message (DB is source of truth)
         const message = await this.chatService.send_message(
             {
                 conversation_id: data.conversation_id,
                 text: data.text,
                 reply_to_message_id: data.reply_to_message_id,
-                file_id: data.file_id
+                file_ids: data.file_ids,
             },
             sender_id,
         );
 
-        // update chat list order- updatedAt
         await this.chatService.touchConversation(message.conversation_id);
 
-        // emit to room
         client.emit('socket_response', message);
-
         client
             .to(`conversation_${message.conversation_id}`)
             .emit('new_message', message);
 
-        // 4️⃣ 🔔 PUSH NOTIFICATION LOGIC (HERE 👇)
         this.handlePushNotification(message, sender_id).catch(console.error);
     }
 
@@ -179,48 +157,42 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         message: Message,
         sender_id: string,
     ) {
-        const { conversation_id } = message;
-
-        // get receiver
-        const receiver_id =
-            await this.chatService.getOtherUserId(
-                conversation_id,
-                sender_id,
-            );
-
-        // check online
-        const is_online = this.userPresenceService.isUserOnline(receiver_id);
-
-        // check room presence
-        const is_in_room = this.userPresenceService.isUserInRoom(
-            receiver_id,
-            `conversation_${conversation_id}`,
-            this.server.sockets.adapter.rooms,
+        const recipientIds = await this.chatService.getConversationRecipientIds(
+            message.conversation_id,
+            sender_id,
         );
 
-        // 🚨 THIS IS YOUR CONDITION
-        if (!is_online || !is_in_room) {
-            // check mute
-            const muted = await this.chatService.isMuted(
-                conversation_id,
-                receiver_id,
+        for (const recipientId of recipientIds) {
+            const is_online = this.userPresenceService.isUserOnline(recipientId);
+            const is_in_room = this.userPresenceService.isUserInRoom(
+                recipientId,
+                `conversation_${message.conversation_id}`,
+                this.server.sockets.adapter.rooms,
             );
 
-            if (!muted) {
-                console.log('Sending push notification');
-                await this.notificationService.sendNotificationToUser(
-                    {
-                        userId: receiver_id,
-                        title: 'New message',
-                        body: message.text,
-                        payload: {
-                            conversation_id: conversation_id,
-                            message_id: message.id,
-                            sender_id: sender_id,
-                        },
-                    }
-                );
+            if (is_online && is_in_room) {
+                continue;
             }
+
+            const muted = await this.chatService.isMuted(
+                message.conversation_id,
+                recipientId,
+            );
+
+            if (muted) {
+                continue;
+            }
+
+            await this.notificationService.sendNotificationToUser({
+                userId: recipientId,
+                title: 'New message',
+                body: message.text,
+                payload: {
+                    conversation_id: message.conversation_id,
+                    message_id: message.id,
+                    sender_id,
+                },
+            });
         }
     }
 
@@ -229,26 +201,24 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         @MessageBody() data: { conversation_id: string },
         @ConnectedSocket() client: Socket,
     ) {
-        // const user_id = client.data.user.id;
         const token = this.getSocketToken(client);
         const user = await this.chatService.validateSocketUser(token);
-        const user_id = user.id;
 
         await this.chatService.validateConversationAccess(
             data.conversation_id,
-            user_id,
+            user.id,
         );
 
         client
             .to(`conversation_${data.conversation_id}`)
             .emit('user_typing', {
                 conversation_id: data.conversation_id,
-                user_id,
+                user_id: user.id,
                 typing: true,
             });
         client.emit('socket_response', {
             conversation_id: data.conversation_id,
-            user_id,
+            user_id: user.id,
             typing: true,
         });
     }
@@ -258,39 +228,33 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         @MessageBody() data: { conversation_id: string },
         @ConnectedSocket() client: Socket,
     ) {
-        // const user_id = client.data.user.id;
         const token = this.getSocketToken(client);
         const user = await this.chatService.validateSocketUser(token);
-        const user_id = user.id;
 
         await this.chatService.validateConversationAccess(
             data.conversation_id,
-            user_id,
+            user.id,
         );
 
         client
             .to(`conversation_${data.conversation_id}`)
             .emit('user_typing', {
                 conversation_id: data.conversation_id,
-                user_id,
+                user_id: user.id,
                 typing: false,
             });
         client.emit('socket_response', {
             conversation_id: data.conversation_id,
-            user_id,
+            user_id: user.id,
             typing: false,
         });
-
     }
-
 
     @SubscribeMessage('message_delivered')
     async handleMessageDelivered(
         @MessageBody() data: { message_id: string },
         @ConnectedSocket() client: Socket,
     ) {
-        console.log('message_delivered id: ', data.message_id)
-        // const user_id = client.data.user.id;
         const token = this.getSocketToken(client);
         const user = await this.chatService.validateSocketUser(token);
         const user_id = user.id;
@@ -298,19 +262,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         const message = await this.messageRepo.findOneBy({
             id: data.message_id,
         });
-        console.log('message: ', message)
         if (!message) {
-            console.log('Message not found')
             return;
         }
-        if (message.sender_id === user_id) return;  //user-2 will tigger this event only
+
+        if (message.sender_id === user_id) return;
         if (message.status !== message_status.sent) return;
 
         await this.messageRepo.update(
             { id: message.id },
             { status: message_status.delivered },
         );
-        console.log('message delivered');
 
         this.server
             .to(`conversation_${message.conversation_id}`)
@@ -322,33 +284,29 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
             message_id: message.id,
             status: message_status.delivered,
         });
-
     }
-
 
     @SubscribeMessage('mark_read')
     async handleMarkRead(
         @MessageBody() data: { conversation_id: string },
         @ConnectedSocket() client: Socket,
     ) {
-        // const user_id = client.data.user.id;
         const token = this.getSocketToken(client);
         const user = await this.chatService.validateSocketUser(token);
-        const user_id = user.id;
 
         await this.chatService.validateConversationAccess(
             data.conversation_id,
-            user_id,
+            user.id,
         );
 
         await this.chatService.markConversationAsRead(
             data.conversation_id,
-            user_id,
+            user.id,
         );
 
         await this.chatService.markMessagesAsRead(
             data.conversation_id,
-            user_id,
+            user.id,
         );
 
         this.server
@@ -356,16 +314,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
             .emit('message_status_update', {
                 conversation_id: data.conversation_id,
                 status: 'read',
-                reader_id: user_id,
+                reader_id: user.id,
             });
 
         client.emit('socket_response', {
             conversation_id: data.conversation_id,
             status: 'read',
-            reader_id: user_id,
+            reader_id: user.id,
         });
     }
-
-
-
 }
