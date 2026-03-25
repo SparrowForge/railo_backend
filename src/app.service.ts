@@ -30,6 +30,7 @@ import { Contact } from './contact/entity/contact.entity';
 import { UserLocation } from './user-location/entities/user-location.entity';
 import { PostView } from './post/entities/post-view.entity';
 import { PostPin } from './post/entities/post-pin.entity';
+import { PollOptions } from './poll-options/entity/poll-options.entity';
 
 @Injectable()
 
@@ -75,7 +76,8 @@ export class AppService implements TypeOrmOptionsFactory {
         StoryLike,
         DeleteAccount,
         Contact,
-        UserLocation
+        UserLocation,
+        PollOptions
       ],
       synchronize: false, // Never use synchronize in production
       logging: isDevelopment,

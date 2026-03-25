@@ -25,6 +25,7 @@ import { StoryModule } from './story/story.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ContactModule } from './contact/contact.module';
 import { UserLocationModule } from './user-location/user-location.module';
+import { PollOptionsModule } from './poll-options/poll-options.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { UserLocationModule } from './user-location/user-location.module';
     StoryModule,
     ContactModule,
     UserLocationModule,
+    PollOptionsModule,
   ],
   controllers: [AppController],
   providers: [
