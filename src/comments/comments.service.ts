@@ -8,7 +8,8 @@ import { CommentDto } from './dto/comment.dto';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { ReplyCommentDto } from './dto/reply-comment.dto';
 import { NotificationService } from 'src/notifications/notifications.service';
-import { NotificationOptions, NotificationTypeEnum } from 'src/notifications/entity/notification-type.enum';
+import { NotificationTypeEnum } from 'src/notifications/entity/notification-type.enum';
+import { NotificationOptions } from 'src/notifications/entity/notification-options';
 
 @Injectable()
 export class CommentService {

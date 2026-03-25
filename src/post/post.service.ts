@@ -21,7 +21,8 @@ import { UserInteractionEnum } from './dto/user-interaction-type.enum';
 import { User } from 'src/users/entities/user.entity';
 import { Gender } from 'src/users/enum/gender.enum';
 import { NotificationService } from 'src/notifications/notifications.service';
-import { NotificationOptions, NotificationTypeEnum } from 'src/notifications/entity/notification-type.enum';
+import { NotificationTypeEnum } from 'src/notifications/entity/notification-type.enum';
+import { NotificationOptions } from 'src/notifications/entity/notification-options';
 
 @Injectable()
 export class PostService {
