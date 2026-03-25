@@ -6,6 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Posts } from './entities/post.entity';
 import { DeepPartial, Repository } from 'typeorm';
 import { PostLike } from './entities/post-like.entity';
+import { PostPin } from './entities/post-pin.entity';
 import { PostView } from './entities/post-view.entity';
 import { PostVisibilityEnum } from 'src/common/enums/post-visibility.enum';
 import { Follow } from 'src/follow/entities/follow.entity';
@@ -19,6 +20,8 @@ import { FilterPostDto } from './dto/filter-post.dto';
 import { UserInteractionEnum } from './dto/user-interaction-type.enum';
 import { User } from 'src/users/entities/user.entity';
 import { Gender } from 'src/users/enum/gender.enum';
+import { NotificationService } from 'src/notifications/notifications.service';
+import { NotificationOptions, NotificationTypeEnum } from 'src/notifications/entity/notification-type.enum';
 
 @Injectable()
 export class PostService {
@@ -29,11 +32,16 @@ export class PostService {
         @InjectRepository(PostLike)
         private readonly postLikeRepo: Repository<PostLike>,
 
+        @InjectRepository(PostPin)
+        private readonly postPinRepo: Repository<PostPin>,
+
         @InjectRepository(PostView)
         private readonly postViewRepo: Repository<PostView>,
 
         @InjectRepository(UserLocation)
         private readonly userLocationRepo: Repository<UserLocation>,
+
+        private readonly notificationService: NotificationService,
     ) { }
 
     private formatDateKey(date: Date): string {
@@ -184,6 +192,10 @@ export class PostService {
                 'isLiked',
             )
             .addSelect(
+                'CASE WHEN currentUserPin.id IS NOT NULL THEN true ELSE false END',
+                'isPinned',
+            )
+            .addSelect(
                 'userLocation.area',
                 'userArea',
             )
@@ -206,6 +218,12 @@ export class PostService {
                 PostLike,
                 'currentUserLike',
                 'currentUserLike.postId = post.id AND currentUserLike.userId = :userId',
+                { userId },
+            )
+            .leftJoin(
+                PostPin,
+                'currentUserPin',
+                'currentUserPin.postId = post.id AND currentUserPin.userId = :userId',
                 { userId },
             )
             .leftJoin(
@@ -269,6 +287,7 @@ export class PostService {
             ...post,
             distance_km: Number(raw[index].distance_km) || 0,
             isLiked: raw[index].isLiked === true || raw[index].isLiked === 'true',
+            isPinned: raw[index].isPinned === true || raw[index].isPinned === 'true',
             user_area: raw[index].userArea ?? raw[index].userarea ?? null,
             user_city: raw[index].userCity ?? raw[index].usercity ?? null,
             user_state: raw[index].userState ?? raw[index].userstate ?? null,
@@ -294,17 +313,40 @@ export class PostService {
     async getUserFeed(
         paginationDto: PaginationDto,
         userId: string, // logged-in user
-    ): Promise<PaginatedResponseDto<Posts>> {
+    ): Promise<PaginatedResponseDto<any>> {
         const page = Math.max(1, paginationDto.page ?? 1);
         const limit = Math.min(paginationDto.limit ?? 20, 50);
         const skip = (page - 1) * limit;
 
         const queryBuilder = this.postRepo
             .createQueryBuilder('post')
+            .addSelect(
+                'CASE WHEN currentUserPin.id IS NOT NULL THEN true ELSE false END',
+                'isPinned',
+            )
+            .addSelect(
+                'CASE WHEN currentUserLike.id IS NOT NULL THEN true ELSE false END',
+                'isLiked',
+            )
+            .leftJoinAndSelect('post.user', 'user')
+            .leftJoinAndSelect('user.file', 'userFile')
+            .leftJoinAndSelect('post.file', 'postFile')
             .leftJoin(
                 Follow,
                 'f',
                 'f.followingId = post.userId AND f.followerId = :userId',
+                { userId },
+            )
+            .leftJoin(
+                PostLike,
+                'currentUserLike',
+                'currentUserLike.postId = post.id AND currentUserLike.userId = :userId',
+                { userId },
+            )
+            .leftJoin(
+                PostPin,
+                'currentUserPin',
+                'currentUserPin.postId = post.id AND currentUserPin.userId = :userId',
                 { userId },
             )
             .where(
@@ -319,7 +361,13 @@ export class PostService {
             .take(limit)
             .skip(skip);
 
-        const [items, total] = await queryBuilder.getManyAndCount();
+        const { entities, raw } = await queryBuilder.getRawAndEntities();
+        const items = entities.map((post, index) => ({
+            ...post,
+            isLiked: raw[index].isLiked === true || raw[index].isLiked === 'true',
+            isPinned: raw[index].isPinned === true || raw[index].isPinned === 'true',
+        }));
+        const total = await queryBuilder.getCount();
         const totalPages = Math.ceil(total / limit);
 
         return {
@@ -358,6 +406,10 @@ export class PostService {
                 'isLiked',
             )
             .addSelect(
+                'CASE WHEN currentUserPin.id IS NOT NULL THEN true ELSE false END',
+                'isPinned',
+            )
+            .addSelect(
                 'userLocation.area',
                 'userArea',
             )
@@ -380,6 +432,12 @@ export class PostService {
                 PostLike,
                 'currentUserLike',
                 'currentUserLike.postId = post.id AND currentUserLike.userId = :userId',
+                { userId },
+            )
+            .leftJoin(
+                PostPin,
+                'currentUserPin',
+                'currentUserPin.postId = post.id AND currentUserPin.userId = :userId',
                 { userId },
             )
             .leftJoin(
@@ -438,9 +496,12 @@ export class PostService {
                     });
             } else if (userInteractionType === UserInteractionEnum.MyPins) {
                 queryBuilder
-                    .andWhere('post.userId = :profileUserId', {
-                        profileUserId,
-                    });
+                    .innerJoin(
+                        PostPin,
+                        'profilePinnedPost',
+                        'profilePinnedPost.postId = post.id AND profilePinnedPost.userId = :profileUserId',
+                        { profileUserId },
+                    );
             }
         }
 
@@ -458,6 +519,7 @@ export class PostService {
             ...post,
             distance_km: Number(raw[index].distance_km) || 0,
             isLiked: raw[index].isLiked === true || raw[index].isLiked === 'true',
+            isPinned: raw[index].isPinned === true || raw[index].isPinned === 'true',
             user_area: raw[index].userArea ?? raw[index].userarea ?? null,
             user_city: raw[index].userCity ?? raw[index].usercity ?? null,
             user_state: raw[index].userState ?? raw[index].userstate ?? null,
@@ -478,63 +540,6 @@ export class PostService {
                 hasPreviousPage: page > 1,
             },
         };
-
-        // const queryBuilder = this.postRepo
-        //     .createQueryBuilder('post')
-        //     .where('post.userId = :profileUserId', {
-        //         profileUserId,
-        //     })
-        //     .andWhere('post.deletedAt IS NULL')
-        //     .orderBy('post.createdAt', 'DESC')
-        //     .take(limit)
-        //     .skip(skip);
-
-        // if (userInteractionType) {
-        //     if (userInteractionType === UserInteractionEnum.MyRolla) {
-        //         queryBuilder
-        //             .andWhere('post.userId = :profileUserId', {
-        //                 profileUserId,
-        //             });
-        //     } else if (userInteractionType === UserInteractionEnum.MyReplies) {
-        //         queryBuilder
-        //             .andWhere('post.userId = :profileUserId', {
-        //                 profileUserId,
-        //             });
-        //     } else if (userInteractionType === UserInteractionEnum.MyVotes) {
-        //         queryBuilder
-        //             .andWhere('post.userId = :profileUserId', {
-        //                 profileUserId,
-        //             });
-        //     } else if (userInteractionType === UserInteractionEnum.MyPins) {
-        //         queryBuilder
-        //             .andWhere('post.userId = :profileUserId', {
-        //                 profileUserId,
-        //             });
-        //     }
-        // }
-
-        // 🔒 privacy rule
-        // if (viewerUserId !== profileUserId) {
-        //     queryBuilder.andWhere(
-        //         'post.visibility != :visibility',
-        //         { visibility: PostVisibilityEnum.PRIVATE },
-        //     );
-        // }
-
-        // const [items, total] = await queryBuilder.getManyAndCount();
-        // const totalPages = Math.ceil(total / limit);
-
-        // return {
-        //     items,
-        //     meta: {
-        //         total,
-        //         page,
-        //         limit,
-        //         totalPages,
-        //         hasNextPage: page < totalPages,
-        //         hasPreviousPage: page > 1,
-        //     },
-        // };
     }
 
     async toggleLike(postId: string, userId: string) {
@@ -550,7 +555,7 @@ export class PostService {
         const existing = await this.postLikeRepo.findOne({
             where: { postId, userId },
         });
-
+        console.log(existing);
         if (existing) {
             await this.postLikeRepo.delete(existing.id);
 
@@ -572,6 +577,14 @@ export class PostService {
             'likeCount',
             1,
         );
+
+        await this.notificationService.sendNotificationToUser(
+            {
+                userId: post.userId,
+                title: NotificationOptions[NotificationTypeEnum.PostLike].title(),
+                body: NotificationOptions[NotificationTypeEnum.PostLike].body(),
+                payload: NotificationOptions[NotificationTypeEnum.PostLike].payload({ postId: postId }),
+            })
 
         return { liked: true };
     }
@@ -600,6 +613,93 @@ export class PostService {
         );
 
         return { viewed: true };
+    }
+
+    async togglePin(postId: string, userId: string) {
+        const post = await this.postRepo.findOne({
+            where: {
+                id: postId,
+            }
+        });
+
+        if (!post) {
+            throw new BadRequestException('Post not found');
+        }
+
+        const existing = await this.postPinRepo.findOne({
+            where: { postId, userId },
+        });
+
+        if (existing) {
+            await this.postPinRepo.delete(existing.id);
+
+            return { pinned: false };
+        }
+
+        await this.postPinRepo.save(
+            this.postPinRepo.create({ postId, userId }),
+        );
+
+        return { pinned: true };
+    }
+
+    async getPinnedPosts(
+        userId: string,
+        paginationDto: PaginationDto,
+    ): Promise<PaginatedResponseDto<any>> {
+        const page = Math.max(1, paginationDto.page ?? 1);
+        const limit = Math.min(paginationDto.limit ?? 20, 50);
+        const skip = (page - 1) * limit;
+
+        const queryBuilder = this.postRepo
+            .createQueryBuilder('post')
+            .addSelect('true', 'isPinned')
+            .addSelect(
+                'CASE WHEN currentUserLike.id IS NOT NULL THEN true ELSE false END',
+                'isLiked',
+            )
+            .leftJoinAndSelect('post.user', 'user')
+            .leftJoinAndSelect('user.file', 'userFile')
+            .leftJoinAndSelect('post.file', 'postFile')
+            .innerJoin(
+                PostPin,
+                'postPin',
+                'postPin.postId = post.id AND postPin.userId = :userId',
+                { userId },
+            )
+            .leftJoin(
+                PostLike,
+                'currentUserLike',
+                'currentUserLike.postId = post.id AND currentUserLike.userId = :userId',
+                { userId },
+            )
+            .where('post.deletedAt IS NULL')
+            .orderBy('postPin.createdAt', 'DESC')
+            .skip(skip)
+            .take(limit);
+
+        const { entities, raw } = await queryBuilder.getRawAndEntities();
+
+        const items = entities.map((post, index) => ({
+            ...post,
+            isLiked: raw[index].isLiked === true || raw[index].isLiked === 'true',
+            isPinned: raw[index].isPinned === true || raw[index].isPinned === 'true',
+        }));
+
+        const total = await queryBuilder.getCount();
+        const totalPages = Math.ceil(total / limit);
+
+        return {
+            items,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPreviousPage: page > 1,
+            },
+        };
     }
 
     async getPostViewAnalytics(postId: string, days: number) {
@@ -735,6 +835,14 @@ export class PostService {
             'shareCount',
             1,
         );
+
+        await this.notificationService.sendNotificationToUser(
+            {
+                userId: originalPost.userId,
+                title: NotificationOptions[NotificationTypeEnum.PostShare].title(),
+                body: NotificationOptions[NotificationTypeEnum.PostShare].body(),
+                payload: NotificationOptions[NotificationTypeEnum.PostShare].payload({ postId: originalPostId }),
+            })
 
         return this.postRepo.save(sharedPost);
     }

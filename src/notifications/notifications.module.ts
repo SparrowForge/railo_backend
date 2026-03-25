@@ -5,9 +5,10 @@ import { UserToFirebaseTokenMap } from './entity/userToFirebaseTokenMap.entity';
 import { NotificationsController } from './notifications.controller';
 import { NotificationService } from './notifications.service';
 import { FirebaseProvider } from '../lib/firebase.provider';
+import { NotificationRecord } from '../notification-record/entities/notification-record.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([UserToFirebaseTokenMap])],
+  imports: [TypeOrmModule.forFeature([UserToFirebaseTokenMap, NotificationRecord])],
   controllers: [NotificationsController],
   providers: [NotificationService, FirebaseProvider],
   exports: [NotificationService, FirebaseProvider],

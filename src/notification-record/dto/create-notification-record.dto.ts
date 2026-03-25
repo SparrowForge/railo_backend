@@ -43,7 +43,7 @@ export class CreateNotificationRecordDto {
   @ApiProperty({ description: 'User ID', example: 39 })
   @IsUUID()
   @IsOptional()
-  userId?: number;
+  userId?: string;
 
   @ApiProperty({
     description: 'Is Seen',

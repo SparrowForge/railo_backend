@@ -63,7 +63,7 @@ export class NotificationRecordController {
     description: 'User: List of notification records',
     type: () => Number,
   })
-  async unseenNotificationCount(@Query('userId') userId: number) {
+  async unseenNotificationCount(@Query('userId') userId: string) {
     const result =
       await this.notificationService.unseenNotificationCount(userId);
     return result;
@@ -94,7 +94,7 @@ export class NotificationRecordController {
     try {
       console.log('create start');
       const created =
-        await this.notificationService.createAndSendNotification(dto);
+        await this.notificationService.createNotification(dto);
       return new BaseResponseDto(created, 'Notification record created');
     } catch (error) {
       console.log(error);
@@ -139,9 +139,7 @@ export class NotificationRecordController {
     description: 'Notification record updated',
     type: BaseResponseDto<NotificationRecord>,
   })
-  async seen(
-    @Param('id', ParseIntPipe) id: number
-  ) {
+  async seen(@Param('id', ParseIntPipe) id: number) {
     const res = await this.notificationService.seen(id);
     return new BaseResponseDto(res, 'Notification seen');
   }
@@ -154,9 +152,7 @@ export class NotificationRecordController {
     description: 'Notification record updated',
     type: BaseResponseDto<NotificationRecord>,
   })
-  async unseen(
-    @Param('id', ParseIntPipe) id: number
-  ) {
+  async unseen(@Param('id', ParseIntPipe) id: number) {
     const res = await this.notificationService.unseen(id);
     return new BaseResponseDto(res, 'Notification seen');
   }
@@ -210,7 +206,7 @@ export class NotificationRecordController {
     description: 'Notification record permanently deleted',
     type: BaseResponseDto<null>,
   })
-  async deleteByUserId(@Param('userId', ParseIntPipe) userId: number) {
+  async deleteByUserId(@Param('userId') userId: string) {
     const res = await this.notificationService.deleteByUserId(userId);
     return new BaseResponseDto(
       res,

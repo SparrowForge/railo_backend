@@ -45,5 +45,5 @@ export class UpdateNotificationRecordDto extends PartialType(
   @ApiProperty({ description: 'User ID', example: 39 })
   @IsUUID()
   @IsOptional()
-  userId?: number;
+  userId?: string;
 }

@@ -135,24 +135,15 @@ union all
     return res;
   }
 
-  async unseenNotificationCount(userId: number) {
+  async unseenNotificationCount(userId: string) {
     return await this.notificationRecordRepository.count({
       where: { userId: userId, isSeen: false },
     });
   }
 
-  async createAndSendNotification(dto: CreateNotificationRecordDto) {
+  async createNotification(dto: CreateNotificationRecordDto) {
     const notificationRecord = this.notificationRecordRepository.create(dto);
-    const res =
-      await this.notificationRecordRepository.save(notificationRecord);
-    console.log('sending noti');
-
-    // await this.sendNotificationsByRecipientTypeAsync({
-    //   recipientType: dto.recipientType,
-    //   notificationTitle: dto.notificationTitle,
-    //   notificationMessage: dto.notificationMessage,
-    //   notificationType: dto.notificationType,
-    // });
+    const res = await this.notificationRecordRepository.save(notificationRecord);
     return res;
   }
 
@@ -248,7 +239,7 @@ union all
     return this.notificationRecordRepository.delete(id);
   }
 
-  deleteByUserId(userId: number) {
+  deleteByUserId(userId: string) {
     return this.notificationRecordRepository.delete({
       userId: userId,
     });

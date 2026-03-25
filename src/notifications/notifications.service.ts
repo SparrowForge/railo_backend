@@ -6,6 +6,8 @@ import { In, MoreThan, Repository } from 'typeorm';
 
 import { FireBaseTopicsEnum } from './data/fire-base-topics.data';
 import { UserToFirebaseTokenMap } from './entity/userToFirebaseTokenMap.entity';
+import { NotificationRecord } from '../notification-record/entities/notification-record.entity';
+import { NotificationDeliveryStatusType } from 'src/notification-record/data/notification-delivery-status-type.data';
 
 
 @Injectable()
@@ -13,6 +15,9 @@ export class NotificationService {
   constructor(
     @InjectRepository(UserToFirebaseTokenMap)
     private userToFirebaseTokenMapRepository: Repository<UserToFirebaseTokenMap>,
+
+    @InjectRepository(NotificationRecord)
+    private notificationRecordRepository: Repository<NotificationRecord>,
 
     @Inject('FIREBASE_ADMIN')
     private readonly firebaseAdmin: typeof admin,
@@ -156,6 +161,15 @@ export class NotificationService {
   }) {
     const activeLimit = new Date();
     activeLimit.setDate(activeLimit.getDate() - 30);
+
+    const notificationRecord = this.notificationRecordRepository.create({
+      notificationTitle: title,
+      notificationMessage: body,
+      deliveryStatus: NotificationDeliveryStatusType.Delivered,
+      userId: userId,
+      isSeen: false
+    });
+    await this.notificationRecordRepository.save(notificationRecord);
 
     const tokensByUserId = await this.userToFirebaseTokenMapRepository.find({
       where: {

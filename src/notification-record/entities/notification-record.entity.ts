@@ -22,7 +22,7 @@ export class NotificationRecord {
 
   @ApiProperty({ description: 'user ID', example: 39 })
   @Column({ type: 'bigint', unsigned: true, nullable: true })
-  userId?: number;
+  userId?: string;
 
   @ApiProperty({ description: 'Notification Title', example: 'Some Title' })
   @Column({ unique: false, length: 255, nullable: false })

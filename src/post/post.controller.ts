@@ -134,8 +134,28 @@ export class PostController {
     @ApiResponse({ status: 404, description: 'Post not found', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
     async toggleLike(@CurrentUser() user: AuthUser, @Param('id') id: string) {
-        await this.postService.toggleLike(id, user.userId);
-        return new BaseResponseDto(null, 'Post like toogled successfully');
+        const res = await this.postService.toggleLike(id, user.userId);
+        return new BaseResponseDto(res, 'Post like toogled successfully');
+    }
+
+    @Post(':id/toggle-pin')
+    @ApiOperation({ summary: 'Toggle pin a post', })
+    @ApiResponse({ status: 200, description: 'Post pin toggled successfully', type: BaseResponseDto<null>, })
+    @ApiResponse({ status: 404, description: 'Post not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async togglePin(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+        const res = await this.postService.togglePin(id, user.userId);
+        return new BaseResponseDto(res, 'Post pin toggled successfully');
+    }
+
+    @Get('get-pinned-posts')
+    @ApiOperation({ summary: 'Get pinned posts for the current user', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async getPinnedPosts(@CurrentUser() user: AuthUser, @Query() filters: FilterPostDto) {
+        const { page, limit } = filters;
+        const pagination = { page, limit };
+        const post = await this.postService.getPinnedPosts(user.userId, pagination);
+        return new BaseResponseDto(post, 'Pinned post list retrieved successfully');
     }
 
     @Post(':id/view')

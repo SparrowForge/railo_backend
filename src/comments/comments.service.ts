@@ -7,6 +7,8 @@ import { Posts } from 'src/post/entities/post.entity';
 import { CommentDto } from './dto/comment.dto';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { ReplyCommentDto } from './dto/reply-comment.dto';
+import { NotificationService } from 'src/notifications/notifications.service';
+import { NotificationOptions, NotificationTypeEnum } from 'src/notifications/entity/notification-type.enum';
 
 @Injectable()
 export class CommentService {
@@ -19,6 +21,8 @@ export class CommentService {
 
         @InjectRepository(CommentLike)
         private readonly commentLikeRepo: Repository<CommentLike>,
+
+        private readonly notificationService: NotificationService,
     ) { }
 
     async addComment(userId: string, { postId, text, parentId }: CommentDto) {
@@ -39,6 +43,19 @@ export class CommentService {
                 'commentCount',
                 1,
             );
+        }
+
+        const post = await this.postRepo.findOne({
+            where: { id: postId }
+        });
+
+        if (post) {
+            await this.notificationService.sendNotificationToUser({
+                userId: post.userId,
+                title: NotificationOptions[NotificationTypeEnum.PostComment].title(),
+                body: NotificationOptions[NotificationTypeEnum.PostComment].body(),
+                payload: NotificationOptions[NotificationTypeEnum.PostComment].payload(),
+            })
         }
 
         return comment;
