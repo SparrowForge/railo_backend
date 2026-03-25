@@ -102,10 +102,7 @@ async function main() {
     // ✅ receive message
     // by user-2
     socket.on('new_message', (message) => {
-      process.stdout.clearLine(0);
-      process.stdout.cursorTo(0);
-      console.log('📩 message_status_update', message);
-      rl.prompt(true);
+      safeLog('📩 new_message', message);
 
       // delivery ACK
       socket.emit('message_delivered', {
@@ -116,10 +113,7 @@ async function main() {
     // message_status_update
     // by user-1
     socket.on('message_status_update', (message) => {
-      process.stdout.clearLine(0);
-      process.stdout.cursorTo(0);
-      console.log('📩 message_status_update', message);
-      rl.prompt(true);
+      safeLog('✅', 'message_status_update', message);
     });
 
     // debug all events
@@ -130,7 +124,7 @@ async function main() {
     // user_online
     socket.on('user_online', (message) => {
       if (message.user_id !== loggedInUserId) {
-        safeLog('📡', event, args);
+        safeLog('📡', message);
       }
     });
 

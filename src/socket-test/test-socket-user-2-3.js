@@ -4,9 +4,9 @@ const readline = require('readline');
 
 require('dotenv').config();
 
-const userName = 'diptoroypersonal@gmail.com';
-const password = 'Password100@';
-const chatWithUserId = '188df91d-f8f3-48f9-bb7b-f259d322576d'; //"admin@rillo.com"
+const userName = 'admin@rillo.com';
+const password = 'p@ssword';
+const chatWithUserId = 'c41628d1-2861-43bd-a3ae-49fad078e5b5'; //diptoroypersonal@gmail.com
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
@@ -102,10 +102,7 @@ async function main() {
     // ✅ receive message
     // by user-2
     socket.on('new_message', (message) => {
-      process.stdout.clearLine(0);
-      process.stdout.cursorTo(0);
-      console.log('📩 message_status_update', message);
-      rl.prompt(true);
+      safeLog('📩 new_message', message);
 
       // delivery ACK
       socket.emit('message_delivered', {
@@ -116,10 +113,7 @@ async function main() {
     // message_status_update
     // by user-1
     socket.on('message_status_update', (message) => {
-      process.stdout.clearLine(0);
-      process.stdout.cursorTo(0);
-      console.log('📩 message_status_update', message);
-      rl.prompt(true);
+      safeLog('✅', 'message_status_update', message);
     });
 
     // debug all events
@@ -130,10 +124,7 @@ async function main() {
     // user_online
     socket.on('user_online', (message) => {
       if (message.user_id !== loggedInUserId) {
-        process.stdout.clearLine(0);
-        process.stdout.cursorTo(0);
-        console.log('📩 user_online', message);
-        rl.prompt(true);
+        safeLog('📡', message);
       }
     });
 

@@ -278,6 +278,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
             .to(`conversation_${message.conversation_id}`)
             .emit('message_status_update', {
                 message_id: message.id,
+                sender_id: message.sender_id,
                 status: message_status.delivered,
             });
         client.emit('socket_response', {
