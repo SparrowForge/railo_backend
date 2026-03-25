@@ -36,6 +36,22 @@ export class PostService {
         private readonly userLocationRepo: Repository<UserLocation>,
     ) { }
 
+    private formatDateKey(date: Date): string {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+
+        return `${year}-${month}-${day}`;
+    }
+
+    private normalizeDateKey(value: string | Date): string {
+        if (value instanceof Date) {
+            return this.formatDateKey(value);
+        }
+
+        return value.slice(0, 10);
+    }
+
     async createPost(userId: string, dto: CreatePostDto,): Promise<Posts> {
         const currentUserLocation = await this.userLocationRepo.findOne({
             where: { user_id: userId },
@@ -580,7 +596,7 @@ export class PostService {
         return { viewed: true };
     }
 
-    async getPostViewAnalytics(postId: string) {
+    async getPostViewAnalytics(postId: string, days: number) {
         const post = await this.postRepo.findOne({
             where: {
                 id: postId,
@@ -591,14 +607,45 @@ export class PostService {
             throw new BadRequestException('Post not found');
         }
 
+        if (!Number.isInteger(days) || days < 1) {
+            throw new BadRequestException('Days must be a number greater than or equal to 1');
+        }
+
+        const endDate = new Date();
+        endDate.setHours(23, 59, 59, 999);
+
+        const startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
+        startDate.setDate(startDate.getDate() - (days - 1));
+
         const chartRows = await this.postViewRepo
             .createQueryBuilder('postView')
             .select(`DATE("postView"."createdAt")`, 'viewDate')
             .addSelect('COUNT(*)', 'viewCount')
             .where('postView.postId = :postId', { postId })
+            .andWhere('postView.createdAt BETWEEN :startDate AND :endDate', {
+                startDate,
+                endDate,
+            })
             .groupBy(`DATE("postView"."createdAt")`)
             .orderBy(`DATE("postView"."createdAt")`, 'ASC')
-            .getRawMany<{ viewDate: string; viewCount: string }>();
+            .getRawMany<{ viewDate: string | Date; viewCount: string }>();
+
+        const chartRowMap = new Map(
+            chartRows.map((row) => [this.normalizeDateKey(row.viewDate), Number(row.viewCount)]),
+        );
+
+        const xAxis: string[] = [];
+        const yAxis: number[] = [];
+
+        for (let i = 0; i < days; i++) {
+            const currentDate = new Date(startDate);
+            currentDate.setDate(startDate.getDate() + i);
+            const dateKey = this.formatDateKey(currentDate);
+
+            xAxis.push(dateKey);
+            yAxis.push(chartRowMap.get(dateKey) ?? 0);
+        }
 
         const personCountRaw = await this.postViewRepo
             .createQueryBuilder('postView')
@@ -617,6 +664,10 @@ export class PostService {
                 'other',
             )
             .where('postView.postId = :postId', { postId })
+            .andWhere('postView.createdAt BETWEEN :startDate AND :endDate', {
+                startDate,
+                endDate,
+            })
             .andWhere('user.deleted_at IS NULL')
             .setParameters({
                 male: Gender.male,
@@ -632,8 +683,12 @@ export class PostService {
 
         return {
             chartData: {
-                xAxis: chartRows.map((row) => row.viewDate),
-                yAxis: chartRows.map((row) => Number(row.viewCount)),
+                xAxis,
+                yAxis,
+                minXAxis: xAxis[0] ?? null,
+                maxXAxis: xAxis[xAxis.length - 1] ?? null,
+                minYAxis: yAxis.length ? Math.min(...yAxis) : 0,
+                maxYAxis: yAxis.length ? Math.max(...yAxis) : 0,
             },
             personCount: {
                 allPersons: Number(personCountRaw?.allPersons ?? 0),

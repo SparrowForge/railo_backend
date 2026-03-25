@@ -259,12 +259,14 @@ export class ChatService {
 
             const conversations = await qb.getMany();
             const data = await Promise.all(
-                conversations.map((conversation) =>
-                    this.buildChatListItem(conversation, filters.userId!, {
-                        request_id: null,
-                        request_status: chat_request_status.pending,
-                    }),
-                ),
+                conversations.map(async (conversation) => {
+                    const requestMeta = await this.getConversationRequestMeta(
+                        conversation.id,
+                        chat_request_status.pending,
+                    );
+
+                    return this.buildChatListItem(conversation, filters.userId!, requestMeta);
+                }),
             );
 
             return {
@@ -291,12 +293,14 @@ export class ChatService {
             .getMany();
 
         const result = await Promise.all(
-            conversations.map((conversation) =>
-                this.buildChatListItem(conversation, filters.userId!, {
-                    request_id: null,
-                    request_status: chat_request_status.accepted,
-                }),
-            ),
+            conversations.map(async (conversation) => {
+                const requestMeta = await this.getConversationRequestMeta(
+                    conversation.id,
+                    chat_request_status.accepted,
+                );
+
+                return this.buildChatListItem(conversation, filters.userId!, requestMeta);
+            }),
         );
 
         return {
@@ -451,6 +455,24 @@ export class ChatService {
             profile_image: isGroup
                 ? hydratedConversation.image?.public_url ?? null
                 : (otherUser?.file?.public_url ?? null),
+        };
+    }
+
+    private async getConversationRequestMeta(
+        conversation_id: string,
+        fallbackStatus: chat_request_status,
+    ): Promise<{
+        request_id: string | null;
+        request_status: chat_request_status;
+    }> {
+        const latestRequest = await this.chatRequestRepo.findOne({
+            where: { conversation_id },
+            order: { updated_at: 'DESC' },
+        });
+
+        return {
+            request_id: latestRequest?.id ?? null,
+            request_status: latestRequest?.status ?? fallbackStatus,
         };
     }
 
