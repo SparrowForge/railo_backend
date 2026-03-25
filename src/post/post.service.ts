@@ -6,6 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Posts } from './entities/post.entity';
 import { DeepPartial, Repository } from 'typeorm';
 import { PostLike } from './entities/post-like.entity';
+import { PostView } from './entities/post-view.entity';
 import { PostVisibilityEnum } from 'src/common/enums/post-visibility.enum';
 import { Follow } from 'src/follow/entities/follow.entity';
 import { PostTypeEnum } from 'src/common/enums/post-type.enum';
@@ -16,6 +17,8 @@ import { PaginatedResponseDto } from 'src/common/dto/paginated-response.dto';
 import { UserLocation } from 'src/user-location/entities/user-location.entity';
 import { FilterPostDto } from './dto/filter-post.dto';
 import { UserInteractionEnum } from './dto/user-interaction-type.enum';
+import { User } from 'src/users/entities/user.entity';
+import { Gender } from 'src/users/enum/gender.enum';
 
 @Injectable()
 export class PostService {
@@ -25,6 +28,9 @@ export class PostService {
 
         @InjectRepository(PostLike)
         private readonly postLikeRepo: Repository<PostLike>,
+
+        @InjectRepository(PostView)
+        private readonly postViewRepo: Repository<PostView>,
 
         @InjectRepository(UserLocation)
         private readonly userLocationRepo: Repository<UserLocation>,
@@ -546,6 +552,96 @@ export class PostService {
         );
 
         return { liked: true };
+    }
+
+    async postView(postId: string, userId: string) {
+        const post = await this.postRepo.findOne({
+            where: {
+                id: postId,
+            }
+        });
+
+        if (!post) {
+            throw new BadRequestException('Post not found');
+        }
+
+        const existing = await this.postViewRepo.findOne({
+            where: { postId, userId },
+        });
+
+        if (existing) {
+            return { viewed: true };
+        }
+
+        await this.postViewRepo.save(
+            this.postViewRepo.create({ postId, userId }),
+        );
+
+        return { viewed: true };
+    }
+
+    async getPostViewAnalytics(postId: string) {
+        const post = await this.postRepo.findOne({
+            where: {
+                id: postId,
+            },
+        });
+
+        if (!post) {
+            throw new BadRequestException('Post not found');
+        }
+
+        const chartRows = await this.postViewRepo
+            .createQueryBuilder('postView')
+            .select(`DATE("postView"."createdAt")`, 'viewDate')
+            .addSelect('COUNT(*)', 'viewCount')
+            .where('postView.postId = :postId', { postId })
+            .groupBy(`DATE("postView"."createdAt")`)
+            .orderBy(`DATE("postView"."createdAt")`, 'ASC')
+            .getRawMany<{ viewDate: string; viewCount: string }>();
+
+        const personCountRaw = await this.postViewRepo
+            .createQueryBuilder('postView')
+            .innerJoin(User, 'user', 'user.id = postView.userId')
+            .select('COUNT(DISTINCT postView.userId)', 'allPersons')
+            .addSelect(
+                'COUNT(DISTINCT CASE WHEN user.gender = :male THEN postView.userId END)',
+                'male',
+            )
+            .addSelect(
+                'COUNT(DISTINCT CASE WHEN user.gender = :female THEN postView.userId END)',
+                'female',
+            )
+            .addSelect(
+                'COUNT(DISTINCT CASE WHEN user.gender = :other THEN postView.userId END)',
+                'other',
+            )
+            .where('postView.postId = :postId', { postId })
+            .andWhere('user.deleted_at IS NULL')
+            .setParameters({
+                male: Gender.male,
+                female: Gender.female,
+                other: Gender.other,
+            })
+            .getRawOne<{
+                allPersons: string;
+                male: string;
+                female: string;
+                other: string;
+            }>();
+
+        return {
+            chartData: {
+                xAxis: chartRows.map((row) => row.viewDate),
+                yAxis: chartRows.map((row) => Number(row.viewCount)),
+            },
+            personCount: {
+                allPersons: Number(personCountRaw?.allPersons ?? 0),
+                male: Number(personCountRaw?.male ?? 0),
+                female: Number(personCountRaw?.female ?? 0),
+                other: Number(personCountRaw?.other ?? 0),
+            },
+        };
     }
 
     async sharePost(originalPostId: string, userId: string,) {

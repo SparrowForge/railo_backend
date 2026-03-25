@@ -28,6 +28,7 @@ import { StoryLike } from './story/entities/story_like.entity';
 import { DeleteAccount } from './users/entities/delete-account.entity';
 import { Contact } from './contact/entity/contact.entity';
 import { UserLocation } from './user-location/entities/user-location.entity';
+import { PostView } from './post/entities/post-view.entity';
 
 @Injectable()
 
@@ -62,6 +63,7 @@ export class AppService implements TypeOrmOptionsFactory {
         ConversationClear,
         Follow,
         PostLike,
+        PostView,
         Posts,
         NotificationRecord,
         UserToFirebaseTokenMap,

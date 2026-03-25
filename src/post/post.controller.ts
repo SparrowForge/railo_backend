@@ -49,7 +49,7 @@ export class PostController {
         return new BaseResponseDto(post, 'User profile feed list retrieved successfully');
     }
 
-    @Get('get-post-by-id/:id')
+    @Get('get-post/:id')
     @ApiOperation({ summary: 'Get all post with pagination and filters', description: 'Retrieves a paginated list of all active post with optional filtering by role, department, and search terms. Requires authentication.', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
     async getPostById(@CurrentUser() user: AuthUser, @Param('id') id: string,): Promise<BaseResponseDto<any>> {
@@ -57,11 +57,11 @@ export class PostController {
         return new BaseResponseDto(post, 'Post retrieved successfully');
     }
 
-    @Get('get-post-by-id/:id/dashboard')
+    @Get('get-post/:id/analytics')
     @ApiOperation({ summary: 'Get all post with pagination and filters', description: 'Retrieves a paginated list of all active post with optional filtering by role, department, and search terms. Requires authentication.', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
-    async getPostByIdDashboard(@CurrentUser() user: AuthUser, @Param('id') id: string,): Promise<BaseResponseDto<any>> {
-        const post = await this.postService.getPostById(user.userId, id);
+    async getPostAnalytics(@CurrentUser() user: AuthUser, @Param('id') id: string,): Promise<BaseResponseDto<any>> {
+        const post = await this.postService.getPostViewAnalytics(id);
         return new BaseResponseDto(post, 'Post retrieved successfully');
     }
 
@@ -134,6 +134,16 @@ export class PostController {
         return new BaseResponseDto(null, 'Post like toogled successfully');
     }
 
+    @Post(':id/view')
+    @ApiOperation({ summary: 'View a post', })
+    @ApiResponse({ status: 200, description: 'Post viewed successfully', type: BaseResponseDto<null>, })
+    @ApiResponse({ status: 404, description: 'Post not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async postView(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+        const res = await this.postService.postView(id, user.userId);
+        return new BaseResponseDto(res, 'Post viewed successfully');
+    }
+
     @Post(':id/share-post')
     @ApiOperation({ summary: 'Share a post', description: 'Share a post' })
     @ApiResponse({ status: 200, description: 'Post shared successfully', type: BaseResponseDto<null>, })
@@ -143,38 +153,6 @@ export class PostController {
         await this.postService.sharePost(id, user.userId);
         return new BaseResponseDto(null, 'Post shared successfully');
     }
-
-    // @Get('get-messages')
-    // @ApiOperation({ summary: 'Get all post with pagination and filters', description: 'Retrieves a paginated list of all active post with optional filtering by role, department, and search terms. Requires authentication.', })
-    // @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
-    // async getMessages(@Query() filters: FilterMessageDto) {
-    //     const { page, limit, ...postFilters } = filters;
-    //     const pagination = { page, limit };
-    //     const post = await this.postService.get_messages(pagination, postFilters);
-    //     return new BaseResponseDto(post, 'Post list retrieved successfully');
-    // }
-
-    // @Post('mark-as-read')
-    // @ApiOperation({ summary: 'Read all post', description: 'Read all post', })
-    // @ApiResponse({ status: 201, description: 'Read all post successfully' })
-    // @ApiResponse({ status: 400, description: 'Bad request - validation error', })
-    // @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
-    // async markAsRead(@CurrentUser() user: AuthUser, @Body() readAllPost: ReadAllPostRequestDto) {
-    //     await this.postService.markConversationAsRead(readAllPost.conversationId, user.userId);
-    //     await this.postService.markMessagesAsRead(readAllPost.conversationId, user.userId);
-    //     return new BaseResponseDto('All message mark as read successfully in this conversation');
-    // }
-
-    // @Get()
-    // @ApiOperation({ summary: 'Get all post with pagination and filters', description: 'Retrieves a paginated list of all active post with optional filtering by role, department, and search terms. Requires authentication.', })
-    // @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
-    // async findAll(@Query() filters: FilterPostDto) {
-    //     const { page, limit, ...postFilters } = filters;
-    //     const pagination = { page, limit };
-    //     const post = await this.postService.findAll(pagination, postFilters);
-    //     return new BaseResponseDto(post, 'Post retrieved successfully');
-    // }
-
 
 
 }
