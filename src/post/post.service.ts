@@ -223,11 +223,17 @@ export class PostService {
             .where('post.visibility = :visibility', {
                 visibility: PostVisibilityEnum.NORMAL,
             })
-            .andWhere('post.deletedAt IS NULL')
-            .orderBy('post.createdAt', 'DESC')
+            .andWhere('post.deletedAt IS NULL');
+
+        if (filters.isTopContent && filters.isTopContent === true) {
+            queryBuilder.orderBy('post.likeCount', 'DESC');
+        } else {
+            queryBuilder.orderBy('post.createdAt', 'DESC');
+        }
+        queryBuilder
             .skip(skip)
             .take(limit);
-
+        //=================================================
         if (postId) {
             queryBuilder.andWhere('post.id = :postId', {
                 postId,
