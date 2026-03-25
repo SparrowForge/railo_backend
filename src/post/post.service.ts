@@ -682,6 +682,7 @@ export class PostService {
             }>();
 
         return {
+            totalView: yAxis.reduce((acc, curr) => acc + curr, 0),
             chartData: {
                 xAxis,
                 yAxis,
@@ -696,6 +697,13 @@ export class PostService {
                 female: Number(personCountRaw?.female ?? 0),
                 other: Number(personCountRaw?.other ?? 0),
             },
+            viewSource: {
+                Home: "100%",
+                Profile: "0%",
+                Search: "0%",
+                Other: "0%",
+                ActivityTab: "0%",
+            }
         };
     }
 
