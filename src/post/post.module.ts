@@ -8,9 +8,10 @@ import { Posts } from './entities/post.entity';
 import { PostView } from './entities/post-view.entity';
 import { UserLocation } from 'src/user-location/entities/user-location.entity';
 import { NotificationsModule } from 'src/notifications/notifications.module';
+import { PostPollOption } from './entities/post-poll-options.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Posts, PostLike, PostPin, PostView, UserLocation]), NotificationsModule],
+  imports: [TypeOrmModule.forFeature([Posts, PostLike, PostPin, PostView, UserLocation, PostPollOption]), NotificationsModule],
   providers: [PostService],
   controllers: [PostController]
 })

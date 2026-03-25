@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+    IsArray,
     IsEnum,
     IsNumber,
     IsOptional,
@@ -9,6 +10,7 @@ import {
 } from 'class-validator';
 import { PostTypeEnum } from 'src/common/enums/post-type.enum';
 import { PostVisibilityEnum } from 'src/common/enums/post-visibility.enum';
+import { Transform } from 'class-transformer';
 
 
 export class CreatePostDto {
@@ -36,4 +38,12 @@ export class CreatePostDto {
     @IsOptional()
     @IsUUID()
     locationId?: string;
+
+    @IsOptional()
+    @IsString({ each: true })
+    @IsArray()
+    @Transform(({ value }: { value: string[] }) =>
+        value?.map((v: string) => v.trim())
+    )
+    pollOptionIds?: string[];
 }

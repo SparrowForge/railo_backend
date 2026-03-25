@@ -1,7 +1,7 @@
 export enum PostTypeEnum {
     audio = 'audio',
     location = 'location',
-    time_line = 'time_line',
+    poll = 'poll',
     link = 'link',
     regular = 'regular',
     camera = 'camera',

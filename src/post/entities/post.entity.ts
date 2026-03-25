@@ -1,8 +1,9 @@
 import { Files } from "src/files/entities/file.entity";
 import { PostTypeEnum } from "./../../common/enums/post-type.enum";
 import { PostVisibilityEnum } from "./../../common/enums/post-visibility.enum";
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { User } from "src/users/entities/user.entity";
+import { PostPollOption } from "./post-poll-options.entity";
 
 @Entity('rillo_posts')
 @Index(['userId', 'createdAt'])
@@ -78,4 +79,10 @@ export class Posts {
     @JoinColumn({ name: 'userId' })
     user: User;
 
+
+    @OneToMany(
+        () => PostPollOption,
+        (_) => _.post,
+    )
+    pollOptions: PostPollOption[];
 }

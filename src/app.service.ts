@@ -31,6 +31,7 @@ import { UserLocation } from './user-location/entities/user-location.entity';
 import { PostView } from './post/entities/post-view.entity';
 import { PostPin } from './post/entities/post-pin.entity';
 import { PollOptions } from './poll-options/entity/poll-options.entity';
+import { PostPollOption } from './post/entities/post-poll-options.entity';
 
 @Injectable()
 
@@ -68,6 +69,7 @@ export class AppService implements TypeOrmOptionsFactory {
         PostLike,
         PostView,
         PostPin,
+        PostPollOption,
         NotificationRecord,
         UserToFirebaseTokenMap,
         AppInstructions,

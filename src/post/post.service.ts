@@ -23,6 +23,7 @@ import { Gender } from 'src/users/enum/gender.enum';
 import { NotificationService } from 'src/notifications/notifications.service';
 import { NotificationTypeEnum } from 'src/notifications/entity/notification-type.enum';
 import { NotificationOptions } from 'src/notifications/entity/notification-options';
+import { PostPollOption } from './entities/post-poll-options.entity';
 
 @Injectable()
 export class PostService {
@@ -38,6 +39,9 @@ export class PostService {
 
         @InjectRepository(PostView)
         private readonly postViewRepo: Repository<PostView>,
+
+        @InjectRepository(PostPollOption)
+        private readonly postPollOptionRepo: Repository<PostPollOption>,
 
         @InjectRepository(UserLocation)
         private readonly userLocationRepo: Repository<UserLocation>,
@@ -78,8 +82,16 @@ export class PostService {
             longitude: currentUserLocation?.longitude ?? undefined,
         };
         const post = this.postRepo.create(postData);
+        await this.postRepo.save(post);
 
-        return this.postRepo.save(post);
+        const postPollOptionsData = dto.pollOptionIds?.map((opt) => ({
+            postId: post.id,
+            pollOptionId: opt
+        })) as PostPollOption[];
+        const postPollOptions = this.postPollOptionRepo.create(postPollOptionsData);
+        await this.postPollOptionRepo.save(postPollOptions);
+
+        return { ...post, pollOptions: postPollOptionsData };
     }
 
     async updatePost(
@@ -105,7 +117,21 @@ export class PostService {
 
         Object.assign(post, dto);
 
-        return this.postRepo.save(post);
+        await this.postRepo.save(post);
+
+
+        //delete existing post-poll-options
+        await this.postPollOptionRepo.delete({ postId: postId });
+
+        //insert new post-poll-options
+        const postPollOptionsData = dto.pollOptionIds?.map((opt) => ({
+            postId: post.id,
+            pollOptionId: opt
+        })) as PostPollOption[];
+        const postPollOptions = this.postPollOptionRepo.create(postPollOptionsData);
+        await this.postPollOptionRepo.save(postPollOptions);
+
+        return { ...post, pollOptions: postPollOptionsData };
     }
 
     async getPostById(userId: string, postId: string) {
@@ -114,7 +140,7 @@ export class PostService {
         });
 
         if (!post) {
-            throw new ForbiddenException();
+            throw new NotFoundException('Post not found');
         }
 
         const res = await this.getGlobalFeed(
@@ -152,6 +178,9 @@ export class PostService {
         if (!post) {
             throw new ForbiddenException();
         }
+        //delete existing post-poll-options
+        await this.postPollOptionRepo.delete({ postId: postId });
+
         await this.postRepo.delete(postId);
     }
 
@@ -215,6 +244,8 @@ export class PostService {
             .leftJoinAndSelect('post.user', 'user')
             .leftJoinAndSelect('user.file', 'userFile')
             .leftJoinAndSelect('post.file', 'postFile')
+            .leftJoinAndSelect('post.pollOptions', 'postPollOptions')
+            .leftJoinAndSelect('postPollOptions.pollOption', 'pollOption')
             .leftJoin(
                 PostLike,
                 'currentUserLike',
@@ -429,6 +460,9 @@ export class PostService {
             .leftJoinAndSelect('post.user', 'user')
             .leftJoinAndSelect('user.file', 'userFile')
             .leftJoinAndSelect('post.file', 'postFile')
+            .leftJoinAndSelect('post.pollOptions', 'postPollOptions')
+            .leftJoinAndSelect('postPollOptions.pollOption', 'pollOption')
+
             .leftJoin(
                 PostLike,
                 'currentUserLike',
@@ -827,7 +861,7 @@ export class PostService {
             userId,
             text: originalPost.text,
             originalPostId,
-            postType: PostTypeEnum.time_line,
+            postType: PostTypeEnum.poll,
             visibility: PostVisibilityEnum.NORMAL,
         });
 

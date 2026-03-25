@@ -1,5 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import {
+    IsArray,
     IsEnum,
     IsNotEmpty,
     IsNumber,
@@ -37,4 +39,12 @@ export class UpdatePostDto {
     @IsOptional()
     @IsUUID()
     locationId?: string;
+
+    @IsOptional()
+    @IsString({ each: true })
+    @IsArray()
+    @Transform(({ value }: { value: string[] }) =>
+        value?.map((v: string) => v.trim())
+    )
+    pollOptionIds?: string[];
 }
