@@ -80,6 +80,7 @@ export class PostService {
             location: (currentUserLocation?.location as unknown as Posts['location']) ?? undefined,
             latitude: currentUserLocation?.latitude ?? undefined,
             longitude: currentUserLocation?.longitude ?? undefined,
+            linkUrl: dto.linkUrl,
         };
         const post = this.postRepo.create(postData);
         await this.postRepo.save(post);

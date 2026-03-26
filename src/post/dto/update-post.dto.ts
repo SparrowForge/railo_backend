@@ -20,6 +20,11 @@ export class UpdatePostDto {
     @MaxLength(5000)
     text?: string;
 
+    @IsOptional()
+    @IsString()
+    @MaxLength(5000)
+    linkUrl?: string;
+
     @ApiPropertyOptional({ enum: PostTypeEnum, })
     @IsNotEmpty()
     @IsEnum(PostTypeEnum, { message: `Post type must be one of the allowed values. Allowed values are: ${Object.values(PostTypeEnum).join(', ')}` })

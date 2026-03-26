@@ -14,6 +14,9 @@ export class Posts {
     @Column({ type: 'text', nullable: true })
     text: string | null;
 
+    @Column({ type: 'text', nullable: true })
+    linkUrl: string | null;
+
     @Column({ type: 'enum', enum: PostTypeEnum, default: PostTypeEnum.regular, })
     postType: PostTypeEnum;
 
