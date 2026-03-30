@@ -35,10 +35,11 @@ export class UpdatePostDto {
     @IsEnum(PostVisibilityEnum)
     visibility?: PostVisibilityEnum;
 
-    @ApiPropertyOptional({ description: 'Uploaded file ID (image, audio, video)', example: '7b9c2d64-0fcb-4db2-8c20-1cbb6db7d9f3', })
+    @ApiPropertyOptional({ description: 'Uploaded file IDs (image, audio, video)', example: [1, 2], type: [Number], })
     @IsOptional()
-    @IsNumber()
-    fileId?: number;
+    @IsArray()
+    @IsNumber({}, { each: true })
+    fileIds?: number[];
 
     @ApiPropertyOptional({ description: 'Update location', })
     @IsOptional()

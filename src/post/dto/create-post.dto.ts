@@ -34,10 +34,11 @@ export class CreatePostDto {
     @IsEnum(PostVisibilityEnum, { message: `Visbility types must be within the allowed values. Allowed values are: ${Object.values(PostVisibilityEnum).join(', ')}` })
     visibility?: PostVisibilityEnum;
 
-    @ApiPropertyOptional({ description: 'Uploaded file ID (image, audio, video)', example: '7b9c2d64-0fcb-4db2-8c20-1cbb6db7d9f3', })
+    @ApiPropertyOptional({ description: 'Uploaded file IDs (image, audio, video)', example: [1, 2], type: [Number], })
     @IsOptional()
-    @IsNumber()
-    fileId?: number;
+    @IsArray()
+    @IsNumber({}, { each: true })
+    fileIds?: number[];
 
     @ApiPropertyOptional({ description: 'Selected location ID', example: '3f92a5b2-7b8f-4fa6-9b21-4c2f5e3a1c0d', })
     @IsOptional()

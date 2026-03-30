@@ -4,7 +4,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Posts } from './entities/post.entity';
-import { DeepPartial, Repository } from 'typeorm';
+import { DataSource, DeepPartial, Repository } from 'typeorm';
 import { PostLike } from './entities/post-like.entity';
 import { PostPin } from './entities/post-pin.entity';
 import { PostView } from './entities/post-view.entity';
@@ -24,10 +24,17 @@ import { NotificationService } from 'src/notifications/notifications.service';
 import { NotificationTypeEnum } from 'src/notifications/entity/notification-type.enum';
 import { NotificationOptions } from 'src/notifications/entity/notification-options';
 import { PostPollOption } from './entities/post-poll-options.entity';
+import { PostFile } from './entities/post-file.entity';
+import { CreatePostReportDto } from './dto/create-post-report.dto';
+import { PostReport } from './entities/post-report.entity';
+import { PostReportCriteria } from './entities/post-report-criteria.entity';
+import { PostHide } from './entities/post-hide.entity';
 
 @Injectable()
 export class PostService {
     constructor(
+        private readonly dataSource: DataSource,
+
         @InjectRepository(Posts)
         private readonly postRepo: Repository<Posts>,
 
@@ -43,8 +50,20 @@ export class PostService {
         @InjectRepository(PostPollOption)
         private readonly postPollOptionRepo: Repository<PostPollOption>,
 
+        @InjectRepository(PostFile)
+        private readonly postFileRepo: Repository<PostFile>,
+
+        @InjectRepository(PostReport)
+        private readonly postReportRepo: Repository<PostReport>,
+
+        @InjectRepository(PostReportCriteria)
+        private readonly postReportCriteriaRepo: Repository<PostReportCriteria>,
+
         @InjectRepository(UserLocation)
         private readonly userLocationRepo: Repository<UserLocation>,
+
+        @InjectRepository(PostHide)
+        private readonly postHideRepo: Repository<PostHide>,
 
         private readonly notificationService: NotificationService,
     ) { }
@@ -65,6 +84,45 @@ export class PostService {
         return value.slice(0, 10);
     }
 
+    private async syncPostFiles(postId: string, fileIds?: number[]) {
+        if (fileIds === undefined) {
+            return;
+        }
+
+        await this.postFileRepo.delete({ postId });
+
+        const uniqueFileIds = [...new Set(fileIds)];
+        if (uniqueFileIds.length === 0) {
+            return;
+        }
+
+        const postFiles = this.postFileRepo.create(
+            uniqueFileIds.map((fileId) => ({
+                postId,
+                fileId,
+            })),
+        );
+
+        await this.postFileRepo.save(postFiles);
+    }
+
+    private async loadPostWithRelations(postId: string) {
+        return this.postRepo.findOne({
+            where: { id: postId },
+            relations: {
+                user: {
+                    file: true,
+                },
+                postFiles: {
+                    file: true,
+                },
+                pollOptions: {
+                    pollOption: true,
+                },
+            },
+        });
+    }
+
     async createPost(userId: string, dto: CreatePostDto,): Promise<Posts> {
         const currentUserLocation = await this.userLocationRepo.findOne({
             where: { user_id: userId },
@@ -74,8 +132,7 @@ export class PostService {
             userId,
             text: dto.text,
             postType: dto.postType,
-            visibility: dto.visibility,
-            fileId: dto.fileId,
+            visibility: dto.visibility ?? PostVisibilityEnum.NORMAL,
             locationId: dto.locationId ?? null,
             location: (currentUserLocation?.location as unknown as Posts['location']) ?? undefined,
             latitude: currentUserLocation?.latitude ?? undefined,
@@ -84,15 +141,19 @@ export class PostService {
         };
         const post = this.postRepo.create(postData);
         await this.postRepo.save(post);
+        await this.syncPostFiles(post.id, dto.fileIds);
 
         const postPollOptionsData = dto.pollOptionIds?.map((opt) => ({
             postId: post.id,
             pollOptionId: opt
-        })) as PostPollOption[];
-        const postPollOptions = this.postPollOptionRepo.create(postPollOptionsData);
-        await this.postPollOptionRepo.save(postPollOptions);
+        })) as PostPollOption[] | undefined;
 
-        return { ...post, pollOptions: postPollOptionsData };
+        if (postPollOptionsData?.length) {
+            const postPollOptions = this.postPollOptionRepo.create(postPollOptionsData);
+            await this.postPollOptionRepo.save(postPollOptions);
+        }
+
+        return await this.loadPostWithRelations(post.id) as Posts;
     }
 
     async updatePost(
@@ -116,23 +177,30 @@ export class PostService {
             throw new BadRequestException('Shared posts cannot be edited',);
         }
 
-        Object.assign(post, dto);
+        const { fileIds, pollOptionIds, ...postUpdateData } = dto;
+        Object.assign(post, postUpdateData);
 
         await this.postRepo.save(post);
+        await this.syncPostFiles(post.id, fileIds);
 
 
-        //delete existing post-poll-options
-        await this.postPollOptionRepo.delete({ postId: postId });
+        if (pollOptionIds !== undefined) {
+            //delete existing post-poll-options
+            await this.postPollOptionRepo.delete({ postId: postId });
 
-        //insert new post-poll-options
-        const postPollOptionsData = dto.pollOptionIds?.map((opt) => ({
-            postId: post.id,
-            pollOptionId: opt
-        })) as PostPollOption[];
-        const postPollOptions = this.postPollOptionRepo.create(postPollOptionsData);
-        await this.postPollOptionRepo.save(postPollOptions);
+            //insert new post-poll-options
+            const postPollOptionsData = pollOptionIds.map((opt) => ({
+                postId: post.id,
+                pollOptionId: opt
+            })) as PostPollOption[];
 
-        return { ...post, pollOptions: postPollOptionsData };
+            if (postPollOptionsData.length) {
+                const postPollOptions = this.postPollOptionRepo.create(postPollOptionsData);
+                await this.postPollOptionRepo.save(postPollOptions);
+            }
+        }
+
+        return await this.loadPostWithRelations(post.id);
     }
 
     async getPostById(userId: string, postId: string) {
@@ -244,7 +312,8 @@ export class PostService {
             )
             .leftJoinAndSelect('post.user', 'user')
             .leftJoinAndSelect('user.file', 'userFile')
-            .leftJoinAndSelect('post.file', 'postFile')
+            .leftJoinAndSelect('post.postFiles', 'postFiles')
+            .leftJoinAndSelect('postFiles.file', 'postFile')
             .leftJoinAndSelect('post.pollOptions', 'postPollOptions')
             .leftJoinAndSelect('postPollOptions.pollOption', 'pollOption')
             .leftJoin(
@@ -363,7 +432,8 @@ export class PostService {
             )
             .leftJoinAndSelect('post.user', 'user')
             .leftJoinAndSelect('user.file', 'userFile')
-            .leftJoinAndSelect('post.file', 'postFile')
+            .leftJoinAndSelect('post.postFiles', 'postFiles')
+            .leftJoinAndSelect('postFiles.file', 'postFile')
             .leftJoin(
                 Follow,
                 'f',
@@ -460,7 +530,8 @@ export class PostService {
             )
             .leftJoinAndSelect('post.user', 'user')
             .leftJoinAndSelect('user.file', 'userFile')
-            .leftJoinAndSelect('post.file', 'postFile')
+            .leftJoinAndSelect('post.postFiles', 'postFiles')
+            .leftJoinAndSelect('postFiles.file', 'postFile')
             .leftJoinAndSelect('post.pollOptions', 'postPollOptions')
             .leftJoinAndSelect('postPollOptions.pollOption', 'pollOption')
 
@@ -696,7 +767,8 @@ export class PostService {
             )
             .leftJoinAndSelect('post.user', 'user')
             .leftJoinAndSelect('user.file', 'userFile')
-            .leftJoinAndSelect('post.file', 'postFile')
+            .leftJoinAndSelect('post.postFiles', 'postFiles')
+            .leftJoinAndSelect('postFiles.file', 'postFile')
             .innerJoin(
                 PostPin,
                 'postPin',
@@ -736,6 +808,95 @@ export class PostService {
                 hasPreviousPage: page > 1,
             },
         };
+    }
+
+    async reportPost(postId: string, userId: string, dto: CreatePostReportDto) {
+        const post = await this.postRepo.findOne({
+            where: {
+                id: postId,
+            },
+        });
+
+        if (!post) {
+            throw new NotFoundException('Post not found');
+        }
+
+        const uniqueCriteria = [...new Set(dto.criteria)];
+
+        return await this.dataSource.transaction(async (manager) => {
+            const reportRepo = manager.getRepository(PostReport);
+            const reportCriteriaRepo = manager.getRepository(PostReportCriteria);
+
+            let report = await reportRepo.findOne({
+                where: { postId, userId },
+            });
+
+            if (!report) {
+                report = reportRepo.create({
+                    postId,
+                    userId,
+                });
+            }
+
+            report = await reportRepo.save(report);
+
+            await reportCriteriaRepo.delete({ reportId: report.id });
+
+            const criteriaRows = reportCriteriaRepo.create(
+                uniqueCriteria.map((criteria) => ({
+                    reportId: report.id,
+                    criteria,
+                })),
+            );
+
+            await reportCriteriaRepo.save(criteriaRows);
+
+            return {
+                postId,
+                reported: true,
+                criteria: uniqueCriteria,
+            };
+        });
+    }
+
+    async hidePost(postId: string, userId: string) {
+        const post = await this.postRepo.findOne({
+            where: {
+                id: postId,
+            },
+        });
+
+        if (!post) {
+            throw new NotFoundException('Post not found');
+        }
+
+        //delete previous data
+        await this.postHideRepo.delete({ postId, userId });
+
+        //create new data
+        const entity = this.postHideRepo.create(
+            {
+                postId,
+                userId,
+            }
+        );
+
+        return await this.postHideRepo.save(entity);
+    }
+
+    async unhidePost(postId: string, userId: string) {
+        const post = await this.postRepo.findOne({
+            where: {
+                id: postId,
+            },
+        });
+
+        if (!post) {
+            throw new NotFoundException('Post not found');
+        }
+
+        //delete previous data
+        return await this.postHideRepo.delete({ postId, userId });
     }
 
     async getPostViewAnalytics(postId: string, days: number) {

@@ -11,6 +11,7 @@ import type AuthUser from 'src/auth/dto/auth-user';
 import { CreatePostDto } from './dto/create-post.dto';
 import { Posts } from './entities/post.entity';
 import { UpdatePostDto } from './dto/update-post.dto';
+import { CreatePostReportDto } from './dto/create-post-report.dto';
 
 @ApiTags('Post')
 @ApiBearerAuth()
@@ -176,6 +177,36 @@ export class PostController {
     async sharePost(@CurrentUser() user: AuthUser, @Param('id') id: string) {
         await this.postService.sharePost(id, user.userId);
         return new BaseResponseDto(null, 'Post shared successfully');
+    }
+
+    @Post(':id/report')
+    @ApiOperation({ summary: 'Report a post', description: 'Report a post with one or more predefined criteria.' })
+    @ApiResponse({ status: 200, description: 'Post reported successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Post not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async reportPost(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() createPostReportDto: CreatePostReportDto) {
+        const res = await this.postService.reportPost(id, user.userId, createPostReportDto);
+        return new BaseResponseDto(res, 'Post reported successfully');
+    }
+
+    @Post(':id/hide')
+    @ApiOperation({ summary: 'Hide a post', description: 'Hide a post.' })
+    @ApiResponse({ status: 200, description: 'Post Hide successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Post not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async hidePost(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+        const res = await this.postService.hidePost(id, user.userId);
+        return new BaseResponseDto(res, 'Post hide successfully');
+    }
+
+    @Post(':id/unhide')
+    @ApiOperation({ summary: 'Unhide a post', description: 'Unhide a post .' })
+    @ApiResponse({ status: 200, description: 'Post Unhide successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Post not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async unhidePost(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+        const res = await this.postService.unhidePost(id, user.userId);
+        return new BaseResponseDto(res, 'Post unhide successfully');
     }
 
 

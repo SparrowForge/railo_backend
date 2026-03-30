@@ -1,9 +1,9 @@
-import { Files } from "src/files/entities/file.entity";
 import { PostTypeEnum } from "./../../common/enums/post-type.enum";
 import { PostVisibilityEnum } from "./../../common/enums/post-visibility.enum";
 import { Column, CreateDateColumn, DeleteDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { User } from "src/users/entities/user.entity";
 import { PostPollOption } from "./post-poll-options.entity";
+import { PostFile } from "./post-file.entity";
 
 @Entity('rillo_posts')
 @Index(['userId', 'createdAt'])
@@ -22,10 +22,6 @@ export class Posts {
 
     @Column({ type: 'enum', enum: PostVisibilityEnum, default: PostVisibilityEnum.NORMAL, })
     visibility: PostVisibilityEnum;
-
-    // Uploaded file reference (image/audio/video)
-    @Column({ type: 'number', nullable: true })
-    fileId: number;
 
     // Location selected by user
     @Column({ type: 'uuid', nullable: true })
@@ -73,14 +69,15 @@ export class Posts {
     deletedAt?: Date;
 
     /*Relations */
-    @ManyToOne(() => Files, { nullable: true })
-    @JoinColumn({ name: 'fileId' })
-    file: Files;
-
-
     @ManyToOne(() => User, { nullable: true })
     @JoinColumn({ name: 'userId' })
     user: User;
+
+    @OneToMany(
+        () => PostFile,
+        (_) => _.post,
+    )
+    postFiles: PostFile[];
 
 
     @OneToMany(

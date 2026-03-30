@@ -32,6 +32,10 @@ import { PostView } from './post/entities/post-view.entity';
 import { PostPin } from './post/entities/post-pin.entity';
 import { PollOptions } from './poll-options/entity/poll-options.entity';
 import { PostPollOption } from './post/entities/post-poll-options.entity';
+import { PostFile } from './post/entities/post-file.entity';
+import { PostReport } from './post/entities/post-report.entity';
+import { PostReportCriteria } from './post/entities/post-report-criteria.entity';
+import { PostHide } from './post/entities/post-hide.entity';
 
 @Injectable()
 
@@ -70,6 +74,10 @@ export class AppService implements TypeOrmOptionsFactory {
         PostView,
         PostPin,
         PostPollOption,
+        PostFile,
+        PostReport,
+        PostReportCriteria,
+        PostHide,
         NotificationRecord,
         UserToFirebaseTokenMap,
         AppInstructions,
