@@ -36,6 +36,7 @@ import { PostFile } from './post/entities/post-file.entity';
 import { PostReport } from './post/entities/post-report.entity';
 import { PostReportCriteria } from './post/entities/post-report-criteria.entity';
 import { PostHide } from './post/entities/post-hide.entity';
+import { UserPosttHide } from './post/entities/user-post-hide.entity';
 
 @Injectable()
 
@@ -78,6 +79,7 @@ export class AppService implements TypeOrmOptionsFactory {
         PostReport,
         PostReportCriteria,
         PostHide,
+        UserPosttHide,
         NotificationRecord,
         UserToFirebaseTokenMap,
         AppInstructions,

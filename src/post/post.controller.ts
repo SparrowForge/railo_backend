@@ -209,6 +209,26 @@ export class PostController {
         return new BaseResponseDto(res, 'Post unhide successfully');
     }
 
+    @Post(':targetUserId/user-hide')
+    @ApiOperation({ summary: 'userHide', description: 'userHide' })
+    @ApiResponse({ status: 200, description: 'userHide successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Post not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async userHide(@CurrentUser() user: AuthUser, @Param('targetUserId') targetUserId: string) {
+        const res = await this.postService.userHide(targetUserId, user.userId);
+        return new BaseResponseDto(res, 'User hide successfully');
+    }
+
+    @Post(':targetUserId/user-unhide')
+    @ApiOperation({ summary: 'userUnHide', description: 'userUnHide' })
+    @ApiResponse({ status: 200, description: 'userUnHide successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Post not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async userUnHide(@CurrentUser() user: AuthUser, @Param('targetUserId') targetUserId: string) {
+        const res = await this.postService.userUnHide(targetUserId, user.userId);
+        return new BaseResponseDto(res, 'User unhide successfully');
+    }
+
 
 }
 

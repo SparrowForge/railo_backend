@@ -29,6 +29,7 @@ import { CreatePostReportDto } from './dto/create-post-report.dto';
 import { PostReport } from './entities/post-report.entity';
 import { PostReportCriteria } from './entities/post-report-criteria.entity';
 import { PostHide } from './entities/post-hide.entity';
+import { UserPosttHide } from './entities/user-post-hide.entity';
 
 @Injectable()
 export class PostService {
@@ -64,6 +65,9 @@ export class PostService {
 
         @InjectRepository(PostHide)
         private readonly postHideRepo: Repository<PostHide>,
+
+        @InjectRepository(UserPosttHide)
+        private readonly userHideRepo: Repository<UserPosttHide>,
 
         private readonly notificationService: NotificationService,
     ) { }
@@ -897,6 +901,25 @@ export class PostService {
 
         //delete previous data
         return await this.postHideRepo.delete({ postId, userId });
+    }
+
+    async userHide(targetUserId: string, loggedInUserId: string) {
+        //delete previous data
+        await this.userHideRepo.delete({ targetUserId, loggedInUserId });
+
+        //create new data
+        const entity = this.userHideRepo.create(
+            {
+                targetUserId,
+                loggedInUserId,
+            }
+        );
+
+        return await this.userHideRepo.save(entity);
+    }
+
+    async userUnHide(targetUserId: string, loggedInUserId: string) {
+        await this.userHideRepo.delete({ targetUserId, loggedInUserId });
     }
 
     async getPostViewAnalytics(postId: string, days: number) {
