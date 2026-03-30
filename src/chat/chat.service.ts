@@ -97,7 +97,16 @@ export class ChatService {
             });
         }
 
-        return message;
+        const user = await this.userRepo.findOne(
+            {
+                where: { id: user_id },
+                relations: {
+                    file: true,
+                },
+            },
+        );
+
+        return { ...message, user };
     }
 
     async getOrCreateConversation(user_id: string, other_user_id: string) {

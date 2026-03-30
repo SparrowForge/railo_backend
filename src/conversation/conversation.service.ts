@@ -24,6 +24,12 @@ export class ConversationService {
         private readonly dataSource: DataSource,
     ) { }
 
+    private hasAtLeastOneAdmin(
+        members: Array<{ is_admin?: boolean }>,
+    ): boolean {
+        return members.some((member) => member.is_admin === true);
+    }
+
     async can_chat(conversation_id: string) {
         const convo = await this.conversationRepo.findOneBy({
             id: conversation_id,
@@ -166,6 +172,17 @@ export class ConversationService {
         });
 
         if (existingParticipant) {
+            if (existingParticipant.is_admin) {
+                const adminCount = await this.conversationParticipantRepo.countBy({
+                    conversation_id: conversationId,
+                    is_admin: true,
+                });
+
+                if (adminCount <= 1) {
+                    throw new ForbiddenException('Group must have at least one admin member');
+                }
+            }
+
             return await this.conversationParticipantRepo.delete({ id: existingParticipant.id });
         } else {
             throw new ForbiddenException('User is not a member');
@@ -203,39 +220,80 @@ export class ConversationService {
             throw new NotFoundException('User is not a member of this conversation');
         }
 
+        if (targetParticipant.is_admin && !isAdmin) {
+            const adminCount = await this.conversationParticipantRepo.countBy({
+                conversation_id: conversationId,
+                is_admin: true,
+            });
+
+            if (adminCount <= 1) {
+                throw new ForbiddenException('Group must have at least one admin member');
+            }
+        }
+
         // Update the admin status
         targetParticipant.is_admin = isAdmin;
         return await this.conversationParticipantRepo.save(targetParticipant);
     }
 
     async updateGroup(conversationId: string, requesterId: string, updateGroupDto: UpdateGroupDto) {
-        const conversation = await this.conversationRepo.findOneBy({
-            id: conversationId,
-            type: conversation_type.group,
-            is_active: true,
+        return await this.dataSource.transaction(async (manager) => {
+            const conversation = await manager.findOne(Conversation, {
+                where: {
+                    id: conversationId,
+                    type: conversation_type.group,
+                    is_active: true,
+                },
+            });
+
+            if (!conversation) {
+                throw new NotFoundException('Group conversation not found');
+            }
+
+            const requesterParticipant = await manager.findOne(ConversationParticipant, {
+                where: {
+                    conversation_id: conversationId,
+                    user_id: requesterId,
+                },
+            });
+
+            if (!requesterParticipant || !requesterParticipant.is_admin) {
+                throw new ForbiddenException('Only admins can update group metadata');
+            }
+
+            if (updateGroupDto.title !== undefined) {
+                conversation.title = updateGroupDto.title;
+            }
+            if (updateGroupDto.image_id !== undefined) {
+                conversation.image_id = updateGroupDto.image_id;
+            }
+
+            const savedConversation = await manager.save(Conversation, conversation);
+
+            if (updateGroupDto.members !== undefined) {
+                const uniqueMembers = Array.from(
+                    new Map(
+                        updateGroupDto.members.map((member) => [
+                            member.user_id,
+                            {
+                                conversation_id: conversationId,
+                                user_id: member.user_id,
+                                is_admin: member.is_admin || false,
+                            },
+                        ]),
+                    ).values(),
+                );
+
+                if (!this.hasAtLeastOneAdmin(uniqueMembers)) {
+                    throw new ForbiddenException('Group must have at least one admin member');
+                }
+
+                await manager.delete(ConversationParticipant, { conversation_id: conversationId });
+                await manager.save(ConversationParticipant, uniqueMembers);
+            }
+
+            return savedConversation;
         });
-
-        if (!conversation) {
-            throw new NotFoundException('Group conversation not found');
-        }
-
-        const requesterParticipant = await this.conversationParticipantRepo.findOneBy({
-            conversation_id: conversationId,
-            user_id: requesterId,
-        });
-
-        if (!requesterParticipant || !requesterParticipant.is_admin) {
-            throw new ForbiddenException('Only admins can update group metadata');
-        }
-
-        if (updateGroupDto.title !== undefined) {
-            conversation.title = updateGroupDto.title;
-        }
-        if (updateGroupDto.image_id !== undefined) {
-            conversation.image_id = updateGroupDto.image_id;
-        }
-
-        return await this.conversationRepo.save(conversation);
     }
 
     async deleteGroup(conversationId: string, requesterId: string) {
@@ -273,22 +331,22 @@ export class ConversationService {
         if (type === 'direct') {
             return await this.conversationRepo.find({
                 where: { type: conversation_type.direct, is_active: true },
-                relations: ['user_one', 'user_two'],
+                relations: ['user_one', 'user_one.file', 'user_two', 'user_two.file'],
             });
         } else if (type === 'group') {
             return await this.conversationRepo.find({
                 where: { type: conversation_type.group, is_active: true },
-                relations: ['participants', 'participants.user'],
+                relations: ['participants', 'participants.user', 'participants.user.file'],
             });
         } else {
             // Get all
             const direct = await this.conversationRepo.find({
                 where: { type: conversation_type.direct, is_active: true },
-                relations: ['user_one', 'user_two'],
+                relations: ['user_one', 'user_one.file', 'user_two', 'user_two.file'],
             });
             const groups = await this.conversationRepo.find({
                 where: { type: conversation_type.group, is_active: true },
-                relations: ['participants', 'participants.user'],
+                relations: ['participants', 'participants.user', 'participants.user.file'],
             });
             return [...direct, ...groups];
         }
@@ -297,7 +355,7 @@ export class ConversationService {
     async getById(conversationId: string) {
         return await this.conversationRepo.findOne({
             where: { id: conversationId },
-            relations: ['user_one', 'user_two', 'participants', 'participants.user', 'image'],
+            relations: ['user_one', 'user_two', 'participants', 'participants.user', 'participants.user.file', 'image'],
         });
     }
 

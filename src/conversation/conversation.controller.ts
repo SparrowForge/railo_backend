@@ -45,7 +45,7 @@ export class ConversationController {
     @ApiResponse({ status: 201, description: 'Group created successfully' })
     async createGroup(@Body() createGroupDto: CreateGroupDto,
         @CurrentUser() user: AuthUser,) {
-        return this.conversationService.createGroup(createGroupDto, user.userId);
+        return new BaseResponseDto(await this.conversationService.createGroup(createGroupDto, user.userId));
     }
 
     @Post('group/:conversationId/add-members')
@@ -56,7 +56,7 @@ export class ConversationController {
         @Body() addMemberDto: AddMemberDto,
         @CurrentUser() user: AuthUser,
     ) {
-        return this.conversationService.addMember(conversationId, addMemberDto, user.userId);
+        return new BaseResponseDto(await this.conversationService.addMember(conversationId, addMemberDto, user.userId));
     }
     @Post('group/:conversationId/remove-members')
     @ApiOperation({ summary: 'Remove a member to a group conversation' })
@@ -66,7 +66,7 @@ export class ConversationController {
         @Body() removeMemberDto: AddMemberDto,
         @CurrentUser() user: AuthUser,
     ) {
-        return this.conversationService.removeMember(conversationId, removeMemberDto, user.userId);
+        return new BaseResponseDto(await this.conversationService.removeMember(conversationId, removeMemberDto, user.userId));
     }
 
     @Put('group/:conversationId/members-role-up')
@@ -77,7 +77,7 @@ export class ConversationController {
         @Body() updateMemberDto: UpdateMemberDto,
         @CurrentUser() user: AuthUser,
     ) {
-        return this.conversationService.updateMemberAdminStatus(conversationId, updateMemberDto.user_id, updateMemberDto.is_admin, user.userId);
+        return new BaseResponseDto(await this.conversationService.updateMemberAdminStatus(conversationId, updateMemberDto.user_id, updateMemberDto.is_admin, user.userId));
     }
 
     @Put('group/:conversationId')

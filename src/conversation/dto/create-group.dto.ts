@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsArray, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateGroupDto {
@@ -24,5 +25,11 @@ export class CreateGroupMemberDto {
 
     @ApiProperty({ description: 'Whether the member is admin', default: false })
     @IsOptional()
+    @Transform(({ value }) => {
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string' && value.toLowerCase() === 'true') return true;
+        if (typeof value === 'string' && value.toLowerCase() === 'false') return false
+        return undefined;
+    })
     is_admin?: boolean;
 }
