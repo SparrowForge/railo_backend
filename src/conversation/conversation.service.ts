@@ -271,18 +271,24 @@ export class ConversationService {
             const savedConversation = await manager.save(Conversation, conversation);
 
             if (updateGroupDto.members !== undefined) {
-                const uniqueMembers = Array.from(
-                    new Map(
-                        updateGroupDto.members.map((member) => [
-                            member.user_id,
-                            {
-                                conversation_id: conversationId,
-                                user_id: member.user_id,
-                                is_admin: member.is_admin || false,
-                            },
-                        ]),
-                    ).values(),
+                const membersMap = new Map(
+                    updateGroupDto.members.map((member) => [
+                        member.user_id,
+                        {
+                            conversation_id: conversationId,
+                            user_id: member.user_id,
+                            is_admin: member.is_admin || false,
+                        },
+                    ]),
                 );
+
+                membersMap.set(requesterId, {
+                    conversation_id: conversationId,
+                    user_id: requesterId,
+                    is_admin: true,
+                });
+
+                const uniqueMembers = Array.from(membersMap.values());
 
                 if (!this.hasAtLeastOneAdmin(uniqueMembers)) {
                     throw new ForbiddenException('Group must have at least one admin member');
