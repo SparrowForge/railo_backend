@@ -13,6 +13,7 @@ export class ChatListItem {
     participant_count: number;
     last_message: Message | null;
     unread_count: number;
+    is_read: boolean;
     is_active: boolean;
     request_id: string | null;
     request_status: chat_request_status;

@@ -37,6 +37,9 @@ import { PostReport } from './post/entities/post-report.entity';
 import { PostReportCriteria } from './post/entities/post-report-criteria.entity';
 import { PostHide } from './post/entities/post-hide.entity';
 import { UserPosttHide } from './post/entities/user-post-hide.entity';
+import { ChatReport } from './chat/entities/chat-report.entity';
+import { ChatReportCriteria } from './chat/entities/chat-report-criteria.entity';
+import { UserChattHide } from './chat/entities/user-chat-hide.entity';
 
 @Injectable()
 
@@ -64,6 +67,8 @@ export class AppService implements TypeOrmOptionsFactory {
         Comments,
         CommentLike,
         ChatRequest,
+        ChatReport,
+        ChatReportCriteria,
         Conversation,
         ConversationParticipant,
         ConversationMute,
@@ -89,6 +94,7 @@ export class AppService implements TypeOrmOptionsFactory {
         DeleteAccount,
         Contact,
         UserLocation,
+        UserChattHide,
         PollOptions
       ],
       synchronize: false, // Never use synchronize in production

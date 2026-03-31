@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { BaseResponseDto } from 'src/common/dto/base-response.dto';
@@ -11,6 +11,7 @@ import type AuthUser from 'src/auth/dto/auth-user';
 import { ReadAllChatRequestDto } from './dto/read-all-char-req.dto';
 import { CreateGroupConversationDto } from './dto/create-group-conversation.dto';
 import { GetOrCreateConversationDto } from './dto/get-or-create-conversation.dto';
+import { CreateChatReportDto } from './dto/create-chat-report.dto';
 
 @ApiTags('Chat')
 @ApiBearerAuth()
@@ -82,6 +83,40 @@ export class ChatController {
         await this.chatService.markConversationAsRead(readAllChat.conversationId, user.userId);
         await this.chatService.markMessagesAsRead(readAllChat.conversationId, user.userId);
         return new BaseResponseDto('All message mark as read successfully in this conversation');
+    }
+
+    @Post(':targetUserId/report')
+    @ApiOperation({ summary: 'Report a chat user', description: 'Report a chat user with one or more predefined criteria.' })
+    @ApiResponse({ status: 200, description: 'Chat reported successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'User not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async reportChat(
+        @CurrentUser() user: AuthUser,
+        @Param('targetUserId') targetUserId: string,
+        @Body() createChatReportDto: CreateChatReportDto,
+    ) {
+        const res = await this.chatService.reportChat(targetUserId, user.userId, createChatReportDto);
+        return new BaseResponseDto(res, 'Chat reported successfully');
+    }
+
+    @Post(':targetUserId/user-hide')
+    @ApiOperation({ summary: 'userHide', description: 'userHide' })
+    @ApiResponse({ status: 200, description: 'userHide successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'User not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async userHide(@CurrentUser() user: AuthUser, @Param('targetUserId') targetUserId: string) {
+        const res = await this.chatService.userHide(targetUserId, user.userId);
+        return new BaseResponseDto(res, 'User hide successfully');
+    }
+
+    @Post(':targetUserId/user-unhide')
+    @ApiOperation({ summary: 'userUnHide', description: 'userUnHide' })
+    @ApiResponse({ status: 200, description: 'userUnHide successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'User not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async userUnHide(@CurrentUser() user: AuthUser, @Param('targetUserId') targetUserId: string) {
+        const res = await this.chatService.userUnHide(targetUserId, user.userId);
+        return new BaseResponseDto(res, 'User unhide successfully');
     }
 
     // @Post()

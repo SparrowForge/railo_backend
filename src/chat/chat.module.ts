@@ -16,6 +16,9 @@ import { AuthModule } from 'src/auth/auth.module';
 import { NotificationsModule } from 'src/notifications/notifications.module';
 import { ChatRequest } from 'src/chat-request/entities/chat-request.entity';
 import { Files } from '../files/entities/file.entity';
+import { ChatReport } from './entities/chat-report.entity';
+import { ChatReportCriteria } from './entities/chat-report-criteria.entity';
+import { UserChattHide } from './entities/user-chat-hide.entity';
 
 @Module({
   imports: [
@@ -27,7 +30,10 @@ import { Files } from '../files/entities/file.entity';
       ConversationMute,
       ConversationRead,
       Message,
-      Files
+      Files,
+      ChatReport,
+      ChatReportCriteria,
+      UserChattHide,
     ]),
     AuthModule,
     NotificationsModule

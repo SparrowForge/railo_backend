@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Message } from './entities/messages.entity';
 import { SendMessageDto } from './dto/send-message.dto';
 import { Conversation } from 'src/conversation/entities/conversation.entity';
@@ -28,10 +28,16 @@ import { chat_request_status } from 'src/common/enums/chat-request.enum';
 import { conversation_type } from 'src/common/enums/conversation-type.enum';
 import { ConversationParticipant } from 'src/conversation/entities/conversation-participant.entity';
 import { CreateGroupConversationDto } from './dto/create-group-conversation.dto';
+import { CreateChatReportDto } from './dto/create-chat-report.dto';
+import { ChatReport } from './entities/chat-report.entity';
+import { ChatReportCriteria } from './entities/chat-report-criteria.entity';
+import { UserChattHide } from './entities/user-chat-hide.entity';
 
 @Injectable()
 export class ChatService {
     constructor(
+        private readonly dataSource: DataSource,
+
         @InjectRepository(User)
         private readonly userRepo: Repository<User>,
 
@@ -55,6 +61,9 @@ export class ChatService {
 
         @InjectRepository(Files)
         private readonly fileRepo: Repository<Files>,
+
+        @InjectRepository(UserChattHide)
+        private readonly userChatHideRepo: Repository<UserChattHide>,
 
         private readonly jwtService: JwtService,
 
@@ -222,6 +231,73 @@ export class ChatService {
         };
     }
 
+    async reportChat(targetUserId: string, loggedInUserId: string, dto: CreateChatReportDto) {
+        const targetUser = await this.userRepo.findOne({
+            where: {
+                id: targetUserId,
+            },
+            select: ['id'],
+        });
+
+        if (!targetUser) {
+            throw new NotFoundException('User not found');
+        }
+
+        const uniqueCriteria = [...new Set(dto.criteria)];
+
+        return await this.dataSource.transaction(async (manager) => {
+            const reportRepo = manager.getRepository(ChatReport);
+            const reportCriteriaRepo = manager.getRepository(ChatReportCriteria);
+
+            let report = await reportRepo.findOne({
+                where: { loggedInUserId, targetUserId },
+            });
+
+            if (!report) {
+                report = reportRepo.create({
+                    loggedInUserId,
+                    targetUserId,
+                });
+            }
+
+            report = await reportRepo.save(report);
+
+            await reportCriteriaRepo.delete({ reportId: report.id });
+
+            const criteriaRows = reportCriteriaRepo.create(
+                uniqueCriteria.map((criteria) => ({
+                    reportId: report.id,
+                    criteria,
+                })),
+            );
+
+            await reportCriteriaRepo.save(criteriaRows);
+
+            return {
+                targetUserId,
+                reported: true,
+                criteria: uniqueCriteria,
+            };
+        });
+    }
+
+    async userHide(targetUserId: string, loggedInUserId: string) {
+        await this.userChatHideRepo.delete({ targetUserId, loggedInUserId });
+
+        const entity = this.userChatHideRepo.create(
+            {
+                targetUserId,
+                loggedInUserId,
+            }
+        );
+
+        return await this.userChatHideRepo.save(entity);
+    }
+
+    async userUnHide(targetUserId: string, loggedInUserId: string) {
+        return await this.userChatHideRepo.delete({ targetUserId, loggedInUserId });
+    }
+
     async get_unread_count(conversation_id: string, user_id: string) {
         const read = await this.readRepo.findOneBy({
             conversation_id,
@@ -247,7 +323,6 @@ export class ChatService {
         filters: Partial<FilterChatDto>,
     ) {
         const { page = 1, limit = 1000000000000 } = paginationDto;
-        const skip = (page - 1) * limit;
         const isPendingRequestList = filters.request_status === chat_request_status.pending;
 
         if (isPendingRequestList) {
@@ -264,12 +339,10 @@ export class ChatService {
                 .andWhere('(c.user_one_id = :user_id OR c.user_two_id = :user_id)', {
                     user_id: filters.userId,
                 })
-                .orderBy('c.updated_at', 'DESC')
-                .take(limit)
-                .skip(skip);
+                .orderBy('c.updated_at', 'DESC');
 
             const conversations = await qb.getMany();
-            const data = await Promise.all(
+            const items = await Promise.all(
                 conversations.map(async (conversation) => {
                     const requestMeta = await this.getConversationRequestMeta(
                         conversation.id,
@@ -279,12 +352,14 @@ export class ChatService {
                     return this.buildChatListItem(conversation, filters.userId!, requestMeta);
                 }),
             );
+            const data = this.applyChatListFilters(items, filters);
+            const paginatedData = this.paginateChatList(data, page, limit);
 
             return {
-                data,
+                data: paginatedData,
                 next_cursor:
-                    conversations.length > 0
-                        ? conversations[conversations.length - 1].updated_at
+                    paginatedData.length > 0
+                        ? paginatedData[paginatedData.length - 1].last_message?.created_at ?? null
                         : null,
             };
         }
@@ -299,11 +374,9 @@ export class ChatService {
             )
             .where('c.is_active = :is_active', { is_active: true })
             .orderBy('c.updated_at', 'DESC')
-            .take(limit)
-            .skip(skip)
             .getMany();
 
-        const result = await Promise.all(
+        const items = await Promise.all(
             conversations.map(async (conversation) => {
                 const requestMeta = await this.getConversationRequestMeta(
                     conversation.id,
@@ -313,12 +386,14 @@ export class ChatService {
                 return this.buildChatListItem(conversation, filters.userId!, requestMeta);
             }),
         );
+        const result = this.applyChatListFilters(items, filters);
+        const paginatedResult = this.paginateChatList(result, page, limit);
 
         return {
-            data: result,
+            data: paginatedResult,
             next_cursor:
-                conversations.length > 0
-                    ? conversations[conversations.length - 1].updated_at
+                paginatedResult.length > 0
+                    ? paginatedResult[paginatedResult.length - 1].last_message?.created_at ?? null
                     : null,
         };
     }
@@ -435,6 +510,7 @@ export class ChatService {
         }
 
         const unread_count = await unread_qb.getCount();
+        const is_read = unread_count === 0;
         const otherUser = otherParticipant?.user;
         const otherLocation = otherUser?.id
             ? await this.getUserLocation(otherUser.id)
@@ -455,6 +531,7 @@ export class ChatService {
             participant_count: participants.length,
             last_message,
             unread_count,
+            is_read,
             is_active: hydratedConversation.is_active,
             request_id: requestMeta.request_id,
             request_status: requestMeta.request_status,
@@ -467,6 +544,38 @@ export class ChatService {
                 ? hydratedConversation.image?.public_url ?? null
                 : (otherUser?.file?.public_url ?? null),
         };
+    }
+
+    private applyChatListFilters(items: ChatListItem[], filters: Partial<FilterChatDto>) {
+        let filteredItems = items;
+
+        if (filters.search?.trim()) {
+            const search = filters.search.trim().toLowerCase();
+
+            filteredItems = filteredItems.filter((item) => {
+                const searchableValues = [
+                    item.title,
+                    item.username,
+                    item.full_name,
+                    item.last_message?.text ?? null,
+                ];
+
+                return searchableValues.some((value) =>
+                    value?.toLowerCase().includes(search),
+                );
+            });
+        }
+
+        if (typeof filters.isRead === 'boolean') {
+            filteredItems = filteredItems.filter((item) => item.is_read === filters.isRead);
+        }
+
+        return filteredItems;
+    }
+
+    private paginateChatList(items: ChatListItem[], page: number, limit: number) {
+        const skip = (page - 1) * limit;
+        return items.slice(skip, skip + limit);
     }
 
     private async getConversationRequestMeta(
