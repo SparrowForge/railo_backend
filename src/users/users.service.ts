@@ -67,6 +67,7 @@ export class UsersService {
 
     const queryBuilder = this.userRepository
       .createQueryBuilder('user')
+      .leftJoinAndSelect('user.file', 'file')
       .skip(skip)
       .take(limit)
       .orderBy('user.name', 'DESC');
