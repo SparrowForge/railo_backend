@@ -31,7 +31,7 @@ export class Message {
 
     @ManyToOne(() => User, { nullable: true })
     @JoinColumn({ name: 'sender_id' })
-    sender_user?: User;
+    user?: User | null;
 
     files?: Files[];
 }

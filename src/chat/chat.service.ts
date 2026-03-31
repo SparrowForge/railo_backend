@@ -201,7 +201,7 @@ export class ChatService {
 
         const qb = this.messageRepo
             .createQueryBuilder('m')
-            .leftJoinAndSelect('m.sender_user', 'user')
+            .leftJoinAndSelect('m.user', 'user')
             .leftJoinAndSelect('user.file', 'file')
             .where('m.conversation_id = :conversation_id', { conversation_id: filters.conversationId });
 
