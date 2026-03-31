@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -147,6 +149,50 @@ export class UsersService {
     });
 
     return { ...user, location: UserCurrentLocation, form: 2025, likes: 156, faves: 46, admieres: 1875 };
+  }
+
+  async findNearestLocations(userId: string) {
+    const currentUserLocation = await this.userLocationRepository.findOne({
+      where: { user_id: userId },
+      order: { created_at: 'DESC' },
+      withDeleted: true,
+    });
+
+    if (!currentUserLocation) {
+      throw new BadRequestException('Logged in user location not found');
+    }
+
+    const queryBuilder = this.userLocationRepository
+      .createQueryBuilder('userLocation')
+      .withDeleted()
+      .where('userLocation.user_id != :userId', { userId })
+      .andWhere(`userLocation.id = (
+          SELECT ul.id
+          FROM rillo_users_location ul
+          WHERE ul.user_id = "userLocation".user_id
+          ORDER BY ul.created_at DESC, ul.id DESC
+          LIMIT 1
+        )`)
+      .addSelect(
+        `ST_Distance(
+          userLocation.location,
+          ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography
+        ) / 1000`,
+        'distance_km',
+      )
+      .orderBy('distance_km', 'ASC')
+      .setParameters({
+        longitude: currentUserLocation.longitude,
+        latitude: currentUserLocation.latitude,
+      })
+      .take(5);
+
+    const { entities, raw } = await queryBuilder.getRawAndEntities();
+
+    return entities.map((location, index) => ({
+      ...location,
+      distance_km: Number(raw[index].distance_km) || 0,
+    }));
   }
 
   findByEmailOrPhoneNumberOrUserName(email: string) {

@@ -364,7 +364,7 @@ export class ChatService {
             };
         }
 
-        const conversations = await this.conversationRepo
+        const conversationsQb = this.conversationRepo
             .createQueryBuilder('c')
             .innerJoin(
                 ConversationParticipant,
@@ -373,8 +373,20 @@ export class ChatService {
                 { user_id: filters.userId },
             )
             .where('c.is_active = :is_active', { is_active: true })
-            .orderBy('c.updated_at', 'DESC')
-            .getMany();
+            .orderBy('c.updated_at', 'DESC');
+
+        if (filters?.search) {
+            conversationsQb.andWhere(
+                `c.id IN (
+                    SELECT m.conversation_id
+                    FROM rillo_message m
+                    WHERE m.text ILIKE :search
+                )`,
+                { search: `%${filters.search}%` },
+            );
+        }
+
+        const conversations = await conversationsQb.getMany();
 
         const items = await Promise.all(
             conversations.map(async (conversation) => {

@@ -31,4 +31,14 @@ export class FilterPostDto extends PaginationDto {
     return undefined;
   })
   isTopContent?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'boolean') return value;
+    if (value === 'true' || value === '1') return true;
+    if (value === 'false' || value === '0') return false;
+    return undefined;
+  })
+  isOnlyMediaTypeContent?: boolean;
 }

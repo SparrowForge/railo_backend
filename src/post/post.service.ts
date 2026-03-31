@@ -368,6 +368,26 @@ export class PostService {
                 visibility: filters.visibility,
             });
         }
+        if (filters?.isOnlyMediaTypeContent) {
+            queryBuilder.andWhere('postFiles.id IS NOT NULL')
+        }
+        if (filters?.userInteractionType) {
+            if (filters.userInteractionType === UserInteractionEnum.TheBest) {
+                queryBuilder.orderBy('post.likeCount', 'DESC');
+            }
+            if (filters.userInteractionType === UserInteractionEnum.MyFaves) {
+                queryBuilder.orderBy('post.likeCount', 'DESC');
+            }
+            if (filters.userInteractionType === UserInteractionEnum.Near) {
+                queryBuilder.orderBy('distance_km', 'ASC');
+                queryBuilder.addOrderBy('post.createdAt', 'DESC');
+            }
+            if (filters.userInteractionType === UserInteractionEnum.Ghosts) {
+                queryBuilder.andWhere('post.visibility= :visibility', {
+                    visibility: PostVisibilityEnum.GHOST
+                });
+            }
+        }
 
         if (currentUserLocation) {
             queryBuilder.addSelect(

@@ -96,6 +96,19 @@ export class UsersController {
     return new BaseResponseDto(users, 'Users retrieved successfully');
   }
 
+  @Get('locations')
+  @ApiOperation({
+    summary: 'Get nearest user locations',
+    description: 'Returns the top 5 nearest other users based on the logged-in user location.',
+  })
+  @ApiResponse({ status: 200, description: 'Nearest user locations retrieved successfully', type: BaseResponseDto, })
+  @ApiResponse({ status: 400, description: 'Logged in user location not found', })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+  async findNearestLocations(@CurrentUser() authUser: AuthUser) {
+    const locations = await this.usersService.findNearestLocations(authUser.userId);
+    return new BaseResponseDto(locations, 'Nearest user locations retrieved successfully');
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a user by id', description: 'Retrieves a specific user by their ID. Only returns active users (soft-deleted users are excluded). Requires authentication.', })
   @ApiParam({ name: 'id', description: 'User ID (uuid)', example: '45e16f14-b27f-4d20-99df-c1d5535ff9e3', type: 'string', })
