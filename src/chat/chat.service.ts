@@ -207,6 +207,9 @@ export class ChatService {
 
         const conversation = await this.getConversationOrFail(filters.conversationId!);
         await this.ensureConversationParticipant(conversation, filters.userId!);
+        const participants_count = await this.participantRepo.countBy({
+            conversation_id: conversation.id,
+        });
 
         const qb = this.messageRepo
             .createQueryBuilder('m')
@@ -224,6 +227,7 @@ export class ChatService {
 
         return {
             data: messages.reverse(),
+            participants_count,
             next_cursor:
                 messages.length > 0
                     ? messages[messages.length - 1].created_at

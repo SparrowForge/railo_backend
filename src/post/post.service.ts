@@ -520,6 +520,7 @@ export class PostService {
         profileUserId: string, // profile owner
         viewerUserId: string, // logged-in user
         userInteractionType?: UserInteractionEnum,
+        filters?: FilterPostDto
     ): Promise<PaginatedResponseDto<Posts>> {
         const page = Math.max(1, paginationDto.page ?? 1);
         const limit = Math.min(paginationDto.limit ?? 20, 50);
@@ -647,6 +648,13 @@ export class PostService {
                 'post.visibility != :visibility',
                 { visibility: PostVisibilityEnum.PRIVATE },
             );
+        }
+
+
+        if (filters?.search) {
+            queryBuilder.andWhere('post.text ILIKE :search', {
+                search: `%${filters?.search}%`,
+            });
         }
 
         const { entities, raw } = await queryBuilder.getRawAndEntities();
