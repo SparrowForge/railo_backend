@@ -371,6 +371,11 @@ export class PostService {
         if (filters?.isOnlyMediaTypeContent) {
             queryBuilder.andWhere('postFiles.id IS NOT NULL')
         }
+        if (filters?.search) {
+            queryBuilder.andWhere('post.text ILIKE :search', {
+                search: `%${filters.search}%`,
+            });
+        }
         if (filters?.userInteractionType) {
             if (filters.userInteractionType === UserInteractionEnum.TheBest) {
                 queryBuilder.orderBy('post.likeCount', 'DESC');

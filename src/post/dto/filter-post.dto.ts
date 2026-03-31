@@ -1,7 +1,7 @@
 
 import { ApiProperty } from '@nestjs/swagger';
 import { PaginationDto } from '../../common/dto/pagination.dto';
-import { IsBoolean, IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { PostVisibilityEnum } from 'src/common/enums/post-visibility.enum';
 import { UserInteractionEnum } from './user-interaction-type.enum';
 import { Transform } from 'class-transformer';
@@ -41,4 +41,8 @@ export class FilterPostDto extends PaginationDto {
     return undefined;
   })
   isOnlyMediaTypeContent?: boolean;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
 }
