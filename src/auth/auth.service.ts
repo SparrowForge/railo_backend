@@ -35,6 +35,14 @@ export class AuthService {
     private emailService: EmailService,
   ) { }
 
+  private signAccessToken(user: { id: string; email: string; role: string }) {
+    return this.jwtService.sign({
+      email: user.email,
+      sub: user.id,
+      role: user.role,
+    });
+  }
+
   async register(createUserDto: CreateUserDto) {
     // UsersService.create already hashes the password.
     // Pass the DTO directly to avoid double-hashing.
@@ -72,11 +80,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const accessToken = this.jwtService.sign({
-      email: user.email,
-      sub: user.id,
-      role: user.role
-    });
+    const accessToken = this.signAccessToken(user);
     const refreshToken =
       await this.refreshTokenService.generateRefreshToken(user);
 
@@ -105,10 +109,7 @@ export class AuthService {
     }
 
     const user = refreshToken.user;
-    const accessToken = this.jwtService.sign({
-      email: user.email,
-      sub: user.id,
-    });
+    const accessToken = this.signAccessToken(user);
     const newRefreshToken =
       await this.refreshTokenService.generateRefreshToken(user);
 
