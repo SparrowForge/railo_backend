@@ -52,5 +52,5 @@ export class UpdatePostDto {
     @Transform(({ value }: { value: string[] }) =>
         value?.map((v: string) => v.trim())
     )
-    pollOptionIds?: string[];
+    pollOptions?: string[];
 }

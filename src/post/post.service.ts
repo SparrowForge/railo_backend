@@ -124,9 +124,7 @@ export class PostService {
                 postFiles: {
                     file: true,
                 },
-                pollOptions: {
-                    pollOption: true,
-                },
+                pollOptions: true,
             },
         });
     }
@@ -151,9 +149,9 @@ export class PostService {
         await this.postRepo.save(post);
         await this.syncPostFiles(post.id, dto.fileIds);
 
-        const postPollOptionsData = dto.pollOptionIds?.map((opt) => ({
+        const postPollOptionsData = dto.pollOptions?.map((opt) => ({
             postId: post.id,
-            pollOptionId: opt
+            pollOption: opt
         })) as PostPollOption[] | undefined;
 
         if (postPollOptionsData?.length) {
@@ -185,21 +183,21 @@ export class PostService {
             throw new BadRequestException('Shared posts cannot be edited',);
         }
 
-        const { fileIds, pollOptionIds, ...postUpdateData } = dto;
+        const { fileIds, pollOptions, ...postUpdateData } = dto;
         Object.assign(post, postUpdateData);
 
         await this.postRepo.save(post);
         await this.syncPostFiles(post.id, fileIds);
 
 
-        if (pollOptionIds !== undefined) {
+        if (pollOptions !== undefined) {
             //delete existing post-poll-options
             await this.postPollOptionRepo.delete({ postId: postId });
 
             //insert new post-poll-options
-            const postPollOptionsData = pollOptionIds.map((opt) => ({
+            const postPollOptionsData = pollOptions.map((opt) => ({
                 postId: post.id,
-                pollOptionId: opt
+                pollOption: opt
             })) as PostPollOption[];
 
             if (postPollOptionsData.length) {
@@ -323,7 +321,6 @@ export class PostService {
             .leftJoinAndSelect('post.postFiles', 'postFiles')
             .leftJoinAndSelect('postFiles.file', 'postFile')
             .leftJoinAndSelect('post.pollOptions', 'postPollOptions')
-            .leftJoinAndSelect('postPollOptions.pollOption', 'pollOption')
             .leftJoin(
                 PostLike,
                 'currentUserLike',
@@ -567,7 +564,6 @@ export class PostService {
             .leftJoinAndSelect('post.postFiles', 'postFiles')
             .leftJoinAndSelect('postFiles.file', 'postFile')
             .leftJoinAndSelect('post.pollOptions', 'postPollOptions')
-            .leftJoinAndSelect('postPollOptions.pollOption', 'pollOption')
 
             .leftJoin(
                 PostLike,
@@ -805,10 +801,7 @@ export class PostService {
         }
 
         const postPollOption = await this.postPollOptionRepo.findOne({
-            where: { postId, pollOptionId },
-            relations: {
-                pollOption: true,
-            },
+            where: { postId, id: pollOptionId },
         });
 
         if (!postPollOption) {
@@ -908,6 +901,7 @@ export class PostService {
             .leftJoinAndSelect('user.file', 'userFile')
             .leftJoinAndSelect('post.postFiles', 'postFiles')
             .leftJoinAndSelect('postFiles.file', 'postFile')
+            .leftJoinAndSelect('post.pollOptions', 'postPollOptions')
             .innerJoin(
                 PostPin,
                 'postPin',
