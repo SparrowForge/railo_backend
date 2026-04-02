@@ -30,6 +30,7 @@ import { PostReport } from './entities/post-report.entity';
 import { PostReportCriteria } from './entities/post-report-criteria.entity';
 import { PostHide } from './entities/post-hide.entity';
 import { UserPosttHide } from './entities/user-post-hide.entity';
+import { PostPollVote } from './entities/post-poll-vote.entity';
 
 @Injectable()
 export class PostService {
@@ -50,6 +51,9 @@ export class PostService {
 
         @InjectRepository(PostPollOption)
         private readonly postPollOptionRepo: Repository<PostPollOption>,
+
+        @InjectRepository(PostPollVote)
+        private readonly postPollVoteRepo: Repository<PostPollVote>,
 
         @InjectRepository(PostFile)
         private readonly postFileRepo: Repository<PostFile>,
@@ -785,6 +789,104 @@ export class PostService {
         );
 
         return { pinned: true };
+    }
+
+    async votePoll(postId: string, pollOptionId: string, userId: string) {
+        const post = await this.postRepo.findOne({
+            where: { id: postId },
+        });
+
+        if (!post) {
+            throw new NotFoundException('Post not found');
+        }
+
+        if (post.postType !== PostTypeEnum.poll) {
+            throw new BadRequestException('This post is not a poll');
+        }
+
+        const postPollOption = await this.postPollOptionRepo.findOne({
+            where: { postId, pollOptionId },
+            relations: {
+                pollOption: true,
+            },
+        });
+
+        if (!postPollOption) {
+            throw new NotFoundException('Poll option not found for this post');
+        }
+
+        const existingVote = await this.postPollVoteRepo.findOne({
+            where: { postId, userId },
+        });
+
+        if (existingVote) {
+            throw new BadRequestException('You have already voted on this poll. Undo your vote first to vote again.');
+        }
+
+        await this.dataSource.transaction(async (manager) => {
+            const voteRepo = manager.getRepository(PostPollVote);
+            const postPollOptionRepo = manager.getRepository(PostPollOption);
+
+            await voteRepo.save(
+                voteRepo.create({
+                    postId,
+                    postPollOptionId: postPollOption.id,
+                    userId,
+                }),
+            );
+
+            await postPollOptionRepo.increment(
+                { id: postPollOption.id },
+                'pollCount',
+                1,
+            );
+        });
+
+        return {
+            postId,
+            selectedPollOptionId: pollOptionId,
+            hasVoted: true,
+        };
+    }
+
+    async undoVotePoll(postId: string, userId: string) {
+        const post = await this.postRepo.findOne({
+            where: { id: postId },
+        });
+
+        if (!post) {
+            throw new NotFoundException('Post not found');
+        }
+
+        if (post.postType !== PostTypeEnum.poll) {
+            throw new BadRequestException('This post is not a poll');
+        }
+
+        const existingVote = await this.postPollVoteRepo.findOne({
+            where: { postId, userId },
+        });
+
+        if (!existingVote) {
+            throw new NotFoundException('Vote not found for this user on this poll');
+        }
+
+        await this.dataSource.transaction(async (manager) => {
+            const voteRepo = manager.getRepository(PostPollVote);
+            const postPollOptionRepo = manager.getRepository(PostPollOption);
+
+            await voteRepo.delete({ id: existingVote.id });
+            await postPollOptionRepo.decrement(
+                { id: existingVote.postPollOptionId },
+                'pollCount',
+                1,
+            );
+        });
+
+        return {
+            postId,
+            removedPollOptionId: existingVote.postPollOptionId,
+            hasVoted: false,
+        };
     }
 
     async getPinnedPosts(

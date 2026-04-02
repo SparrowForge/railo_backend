@@ -14,6 +14,9 @@ export class PostPollOption {
     @Column({ type: 'uuid' })
     pollOptionId: string;
 
+    @Column({ type: 'integer', default: 0 })
+    pollCount: number;
+
     /*Relations */
     @ManyToOne(() => Posts, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'postId' })
