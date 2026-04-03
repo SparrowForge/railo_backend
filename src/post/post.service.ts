@@ -423,6 +423,10 @@ export class PostService {
             user_city: raw[index].userCity ?? raw[index].usercity ?? null,
             user_state: raw[index].userState ?? raw[index].userstate ?? null,
             user_country: raw[index].userCountry ?? raw[index].usercountry ?? null,
+            form: 2025,
+            likes: 156,
+            faves: 46,
+            admieres: 1875
         }));
 
         const total = await queryBuilder.getCount();
@@ -498,6 +502,10 @@ export class PostService {
             ...post,
             isLiked: raw[index].isLiked === true || raw[index].isLiked === 'true',
             isPinned: raw[index].isPinned === true || raw[index].isPinned === 'true',
+            form: 2025,
+            likes: 156,
+            faves: 46,
+            admieres: 1875
         }));
         const total = await queryBuilder.getCount();
         const totalPages = Math.ceil(total / limit);
@@ -668,6 +676,10 @@ export class PostService {
             user_city: raw[index].userCity ?? raw[index].usercity ?? null,
             user_state: raw[index].userState ?? raw[index].userstate ?? null,
             user_country: raw[index].userCountry ?? raw[index].usercountry ?? null,
+            form: 2025,
+            likes: 156,
+            faves: 46,
+            admieres: 1875
         }));
 
         const total = await queryBuilder.getCount();
