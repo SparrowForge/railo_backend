@@ -1,10 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Posts } from './entities/post.entity';
-import { DataSource, DeepPartial, Repository } from 'typeorm';
+import { DataSource, DeepPartial, LessThanOrEqual, Repository } from 'typeorm';
 import { PostLike } from './entities/post-like.entity';
 import { PostPin } from './entities/post-pin.entity';
 import { PostView } from './entities/post-view.entity';
@@ -34,6 +36,8 @@ import { PostPollVote } from './entities/post-poll-vote.entity';
 
 @Injectable()
 export class PostService {
+    private readonly logger = new Logger(PostService.name);
+
     constructor(
         private readonly dataSource: DataSource,
 
@@ -301,6 +305,14 @@ export class PostService {
                 'isPinned',
             )
             .addSelect(
+                'CASE WHEN currentUserPollVote.id IS NOT NULL THEN true ELSE false END',
+                'isVoted',
+            )
+            .addSelect(
+                'currentUserPollVote.postPollOptionId',
+                'votedId',
+            )
+            .addSelect(
                 'userLocation.area',
                 'userArea',
             )
@@ -316,11 +328,44 @@ export class PostService {
                 'userLocation.country',
                 'userCountry',
             )
+            .addSelect(
+                'postLocation.id',
+                'postLocationId',
+            )
+            .addSelect(
+                'postLocation.latitude',
+                'postLocationLatitude',
+            )
+            .addSelect(
+                'postLocation.longitude',
+                'postLocationLongitude',
+            )
+            .addSelect(
+                'postLocation.area',
+                'postLocationArea',
+            )
+            .addSelect(
+                'postLocation.city',
+                'postLocationCity',
+            )
+            .addSelect(
+                'postLocation.state',
+                'postLocationState',
+            )
+            .addSelect(
+                'postLocation.country',
+                'postLocationCountry',
+            )
             .leftJoinAndSelect('post.user', 'user')
             .leftJoinAndSelect('user.file', 'userFile')
             .leftJoinAndSelect('post.postFiles', 'postFiles')
             .leftJoinAndSelect('postFiles.file', 'postFile')
             .leftJoinAndSelect('post.pollOptions', 'postPollOptions')
+            .leftJoin(
+                UserLocation,
+                'postLocation',
+                'postLocation.id = post.locationId',
+            )
             .leftJoin(
                 PostLike,
                 'currentUserLike',
@@ -331,6 +376,12 @@ export class PostService {
                 PostPin,
                 'currentUserPin',
                 'currentUserPin.postId = post.id AND currentUserPin.userId = :userId',
+                { userId },
+            )
+            .leftJoin(
+                PostPollVote,
+                'currentUserPollVote',
+                'currentUserPollVote.postId = post.id AND currentUserPollVote.userId = :userId',
                 { userId },
             )
             .leftJoin(
@@ -420,10 +471,23 @@ export class PostService {
             distance_km: Number(raw[index].distance_km) || 0,
             isLiked: raw[index].isLiked === true || raw[index].isLiked === 'true',
             isPinned: raw[index].isPinned === true || raw[index].isPinned === 'true',
+            isVoted: raw[index].isVoted === true || raw[index].isVoted === 'true',
+            votedId: raw[index].votedId ?? raw[index].votedid ?? null,
             user_area: raw[index].userArea ?? raw[index].userarea ?? null,
             user_city: raw[index].userCity ?? raw[index].usercity ?? null,
             user_state: raw[index].userState ?? raw[index].userstate ?? null,
             user_country: raw[index].userCountry ?? raw[index].usercountry ?? null,
+            postLocation: post.locationId && (raw[index].postLocationId ?? raw[index].postlocationid)
+                ? {
+                    id: raw[index].postLocationId ?? raw[index].postlocationid,
+                    latitude: raw[index].postLocationLatitude ?? raw[index].postlocationlatitude ?? null,
+                    longitude: raw[index].postLocationLongitude ?? raw[index].postlocationlongitude ?? null,
+                    area: raw[index].postLocationArea ?? raw[index].postlocationarea ?? null,
+                    city: raw[index].postLocationCity ?? raw[index].postlocationcity ?? null,
+                    state: raw[index].postLocationState ?? raw[index].postlocationstate ?? null,
+                    country: raw[index].postLocationCountry ?? raw[index].postlocationcountry ?? null,
+                }
+                : null,
             form: 2025,
             likes: 156,
             faves: 46,
@@ -552,6 +616,14 @@ export class PostService {
                 'isPinned',
             )
             .addSelect(
+                'CASE WHEN currentUserPollVote.id IS NOT NULL THEN true ELSE false END',
+                'isVoted',
+            )
+            .addSelect(
+                'currentUserPollVote.postPollOptionId',
+                'votedId',
+            )
+            .addSelect(
                 'userLocation.area',
                 'userArea',
             )
@@ -567,11 +639,44 @@ export class PostService {
                 'userLocation.country',
                 'userCountry',
             )
+            .addSelect(
+                'postLocation.id',
+                'postLocationId',
+            )
+            .addSelect(
+                'postLocation.latitude',
+                'postLocationLatitude',
+            )
+            .addSelect(
+                'postLocation.longitude',
+                'postLocationLongitude',
+            )
+            .addSelect(
+                'postLocation.area',
+                'postLocationArea',
+            )
+            .addSelect(
+                'postLocation.city',
+                'postLocationCity',
+            )
+            .addSelect(
+                'postLocation.state',
+                'postLocationState',
+            )
+            .addSelect(
+                'postLocation.country',
+                'postLocationCountry',
+            )
             .leftJoinAndSelect('post.user', 'user')
             .leftJoinAndSelect('user.file', 'userFile')
             .leftJoinAndSelect('post.postFiles', 'postFiles')
             .leftJoinAndSelect('postFiles.file', 'postFile')
             .leftJoinAndSelect('post.pollOptions', 'postPollOptions')
+            .leftJoin(
+                UserLocation,
+                'postLocation',
+                'postLocation.id = post.locationId',
+            )
 
             .leftJoin(
                 PostLike,
@@ -583,6 +688,12 @@ export class PostService {
                 PostPin,
                 'currentUserPin',
                 'currentUserPin.postId = post.id AND currentUserPin.userId = :userId',
+                { userId },
+            )
+            .leftJoin(
+                PostPollVote,
+                'currentUserPollVote',
+                'currentUserPollVote.postId = post.id AND currentUserPollVote.userId = :userId',
                 { userId },
             )
             .leftJoin(
@@ -672,10 +783,23 @@ export class PostService {
             distance_km: Number(raw[index].distance_km) || 0,
             isLiked: raw[index].isLiked === true || raw[index].isLiked === 'true',
             isPinned: raw[index].isPinned === true || raw[index].isPinned === 'true',
+            isVoted: raw[index].isVoted === true || raw[index].isVoted === 'true',
+            votedId: raw[index].votedId ?? raw[index].votedid ?? null,
             user_area: raw[index].userArea ?? raw[index].userarea ?? null,
             user_city: raw[index].userCity ?? raw[index].usercity ?? null,
             user_state: raw[index].userState ?? raw[index].userstate ?? null,
             user_country: raw[index].userCountry ?? raw[index].usercountry ?? null,
+            postLocation: post.locationId && (raw[index].postLocationId ?? raw[index].postlocationid)
+                ? {
+                    id: raw[index].postLocationId ?? raw[index].postlocationid,
+                    latitude: raw[index].postLocationLatitude ?? raw[index].postlocationlatitude ?? null,
+                    longitude: raw[index].postLocationLongitude ?? raw[index].postlocationlongitude ?? null,
+                    area: raw[index].postLocationArea ?? raw[index].postlocationarea ?? null,
+                    city: raw[index].postLocationCity ?? raw[index].postlocationcity ?? null,
+                    state: raw[index].postLocationState ?? raw[index].postlocationstate ?? null,
+                    country: raw[index].postLocationCountry ?? raw[index].postlocationcountry ?? null,
+                }
+                : null,
             form: 2025,
             likes: 156,
             faves: 46,
@@ -1206,6 +1330,26 @@ export class PostService {
             })
 
         return this.postRepo.save(sharedPost);
+    }
+
+    @Cron('*/5 * * * *')
+    async markExpiredPollsAsComplete() {
+        const cutoffDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        this.logger.log(`Running poll expiration check for posts created before ${cutoffDate.toISOString()}`);
+
+        const result = await this.postRepo.update(
+            {
+                postType: PostTypeEnum.poll,
+                isPollComplete: false,
+                createdAt: LessThanOrEqual(cutoffDate),
+            },
+            {
+                isPollComplete: true,
+            },
+        );
+
+        this.logger.log(`Poll expiration check completed. Marked ${result.affected ?? 0} poll posts as complete.`);
     }
 }
 

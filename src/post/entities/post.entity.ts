@@ -58,6 +58,8 @@ export class Posts {
     @Column({ type: 'double precision', nullable: true })
     longitude: number;
 
+    @Column({ default: false })
+    isPollComplete: boolean;
 
     @CreateDateColumn()
     createdAt: Date;
