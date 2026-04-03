@@ -37,6 +37,7 @@ import { PostReport } from './post/entities/post-report.entity';
 import { PostReportCriteria } from './post/entities/post-report-criteria.entity';
 import { PostHide } from './post/entities/post-hide.entity';
 import { UserPosttHide } from './post/entities/user-post-hide.entity';
+import { PostPollVote } from './post/entities/post-poll-vote.entity';
 import { ChatReport } from './chat/entities/chat-report.entity';
 import { ChatReportCriteria } from './chat/entities/chat-report-criteria.entity';
 import { UserChattHide } from './chat/entities/user-chat-hide.entity';
@@ -80,6 +81,7 @@ export class AppService implements TypeOrmOptionsFactory {
         PostView,
         PostPin,
         PostPollOption,
+        PostPollVote,
         PostFile,
         PostReport,
         PostReportCriteria,

@@ -12,6 +12,7 @@ import { CreatePostDto } from './dto/create-post.dto';
 import { Posts } from './entities/post.entity';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { CreatePostReportDto } from './dto/create-post-report.dto';
+import { VotePostPollDto } from './dto/vote-post-poll.dto';
 
 @ApiTags('Post')
 @ApiBearerAuth()
@@ -152,6 +153,30 @@ export class PostController {
     async togglePin(@CurrentUser() user: AuthUser, @Param('id') id: string) {
         const res = await this.postService.togglePin(id, user.userId);
         return new BaseResponseDto(res, 'Post pin toggled successfully');
+    }
+
+    @Post(':id/vote')
+    @ApiOperation({ summary: 'Vote on a poll post' })
+    @ApiResponse({ status: 200, description: 'Poll voted successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Post or poll option not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async votePoll(
+        @CurrentUser() user: AuthUser,
+        @Param('id') id: string,
+        @Body() dto: VotePostPollDto,
+    ) {
+        const res = await this.postService.votePoll(id, dto.pollOptionId, user.userId);
+        return new BaseResponseDto(res, 'Poll voted successfully');
+    }
+
+    @Delete(':id/vote')
+    @ApiOperation({ summary: 'Undo vote on a poll post' })
+    @ApiResponse({ status: 200, description: 'Poll vote removed successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Post or vote not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async undoVotePoll(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+        const res = await this.postService.undoVotePoll(id, user.userId);
+        return new BaseResponseDto(res, 'Poll vote removed successfully');
     }
 
     @Get('get-pinned-posts')

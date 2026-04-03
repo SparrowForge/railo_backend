@@ -6,4 +6,5 @@ export enum PostTypeEnum {
     regular = 'regular',
     camera = 'camera',
     photo = 'photo',
+    video = 'video',
 }
