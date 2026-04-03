@@ -32,6 +32,7 @@ import { CreateChatReportDto } from './dto/create-chat-report.dto';
 import { ChatReport } from './entities/chat-report.entity';
 import { ChatReportCriteria } from './entities/chat-report-criteria.entity';
 import { UserChattHide } from './entities/user-chat-hide.entity';
+import { ConversationPin } from './entities/conversation-pin.entity';
 
 @Injectable()
 export class ChatService {
@@ -64,6 +65,9 @@ export class ChatService {
 
         @InjectRepository(UserChattHide)
         private readonly userChatHideRepo: Repository<UserChattHide>,
+
+        @InjectRepository(ConversationPin)
+        private readonly conversationPinRepo: Repository<ConversationPin>,
 
         private readonly jwtService: JwtService,
 
@@ -235,17 +239,9 @@ export class ChatService {
         };
     }
 
-    async reportChat(targetUserId: string, loggedInUserId: string, dto: CreateChatReportDto) {
-        const targetUser = await this.userRepo.findOne({
-            where: {
-                id: targetUserId,
-            },
-            select: ['id'],
-        });
-
-        if (!targetUser) {
-            throw new NotFoundException('User not found');
-        }
+    async reportChat(conversationId: string, loggedInUserId: string, dto: CreateChatReportDto) {
+        const conversation = await this.getConversationOrFail(conversationId);
+        await this.ensureConversationParticipant(conversation, loggedInUserId);
 
         const uniqueCriteria = [...new Set(dto.criteria)];
 
@@ -254,13 +250,13 @@ export class ChatService {
             const reportCriteriaRepo = manager.getRepository(ChatReportCriteria);
 
             let report = await reportRepo.findOne({
-                where: { loggedInUserId, targetUserId },
+                where: { loggedInUserId, conversationId },
             });
 
             if (!report) {
                 report = reportRepo.create({
                     loggedInUserId,
-                    targetUserId,
+                    conversationId,
                 });
             }
 
@@ -278,7 +274,7 @@ export class ChatService {
             await reportCriteriaRepo.save(criteriaRows);
 
             return {
-                targetUserId,
+                conversationId,
                 reported: true,
                 criteria: uniqueCriteria,
             };
@@ -414,6 +410,26 @@ export class ChatService {
         };
     }
 
+    async toggleConversationPin(conversation_id: string, user_id: string) {
+        const conversation = await this.getConversationOrFail(conversation_id);
+        await this.ensureConversationParticipant(conversation, user_id);
+
+        const existing = await this.conversationPinRepo.findOne({
+            where: { conversation_id, user_id },
+        });
+
+        if (existing) {
+            await this.conversationPinRepo.delete(existing.id);
+            return { pinned: false };
+        }
+
+        await this.conversationPinRepo.save(
+            this.conversationPinRepo.create({ conversation_id, user_id }),
+        );
+
+        return { pinned: true };
+    }
+
     async validateSocketUser(token?: string): Promise<{ id: string }> {
         if (!token) {
             throw new Error('No token provided');
@@ -531,9 +547,14 @@ export class ChatService {
         const otherLocation = otherUser?.id
             ? await this.getUserLocation(otherUser.id)
             : null;
+        const pinnedConversation = await this.conversationPinRepo.findOneBy({
+            conversation_id: hydratedConversation.id,
+            user_id,
+        });
 
         return {
             conversation_id: hydratedConversation.id,
+            is_pinned: Boolean(pinnedConversation),
             type: hydratedConversation.type,
             title: isGroup
                 ? hydratedConversation.title
@@ -584,6 +605,10 @@ export class ChatService {
 
         if (typeof filters.isRead === 'boolean') {
             filteredItems = filteredItems.filter((item) => item.is_read === filters.isRead);
+        }
+
+        if (typeof filters.isPinned === 'boolean') {
+            filteredItems = filteredItems.filter((item) => item.is_pinned === filters.isPinned);
         }
 
         return filteredItems;

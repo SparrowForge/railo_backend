@@ -4,6 +4,7 @@ import { Point } from "typeorm";
 
 export class ChatListItem {
     conversation_id: string;
+    is_pinned: boolean;
     type: string;
     title: string | null;
     image_url: string | null;

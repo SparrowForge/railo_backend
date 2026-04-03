@@ -85,17 +85,29 @@ export class ChatController {
         return new BaseResponseDto('All message mark as read successfully in this conversation');
     }
 
-    @Post(':targetUserId/report')
-    @ApiOperation({ summary: 'Report a chat user', description: 'Report a chat user with one or more predefined criteria.' })
+    @Post(':conversationId/toggle-pin')
+    @ApiOperation({ summary: 'Toggle pin a conversation' })
+    @ApiResponse({ status: 200, description: 'Conversation pin toggled successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async toggleConversationPin(
+        @CurrentUser() user: AuthUser,
+        @Param('conversationId') conversationId: string,
+    ) {
+        const res = await this.chatService.toggleConversationPin(conversationId, user.userId);
+        return new BaseResponseDto(res, 'Conversation pin toggled successfully');
+    }
+
+    @Post(':conversationId/report')
+    @ApiOperation({ summary: 'Report a conversation', description: 'Report a conversation with one or more predefined criteria.' })
     @ApiResponse({ status: 200, description: 'Chat reported successfully', type: BaseResponseDto<any>, })
-    @ApiResponse({ status: 404, description: 'User not found', })
+    @ApiResponse({ status: 404, description: 'Conversation not found', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
     async reportChat(
         @CurrentUser() user: AuthUser,
-        @Param('targetUserId') targetUserId: string,
+        @Param('conversationId') conversationId: string,
         @Body() createChatReportDto: CreateChatReportDto,
     ) {
-        const res = await this.chatService.reportChat(targetUserId, user.userId, createChatReportDto);
+        const res = await this.chatService.reportChat(conversationId, user.userId, createChatReportDto);
         return new BaseResponseDto(res, 'Chat reported successfully');
     }
 

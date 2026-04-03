@@ -19,6 +19,7 @@ import { Files } from '../files/entities/file.entity';
 import { ChatReport } from './entities/chat-report.entity';
 import { ChatReportCriteria } from './entities/chat-report-criteria.entity';
 import { UserChattHide } from './entities/user-chat-hide.entity';
+import { ConversationPin } from './entities/conversation-pin.entity';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { UserChattHide } from './entities/user-chat-hide.entity';
       ChatReport,
       ChatReportCriteria,
       UserChattHide,
+      ConversationPin,
     ]),
     AuthModule,
     NotificationsModule

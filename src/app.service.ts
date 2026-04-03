@@ -14,6 +14,7 @@ import { ChatRequest } from './chat-request/entities/chat-request.entity';
 import { Conversation } from './conversation/entities/conversation.entity';
 import { ConversationParticipant } from './conversation/entities/conversation-participant.entity';
 import { ConversationMute } from './chat/entities/conversation-mute.entity';
+import { ConversationPin } from './chat/entities/conversation-pin.entity';
 import { ConversationRead } from './chat/entities/conversation-read.entity';
 import { ConversationClear } from './conversation/entities/conversation-clear.entity';
 import { Follow } from './follow/entities/follow.entity';
@@ -73,6 +74,7 @@ export class AppService implements TypeOrmOptionsFactory {
         Conversation,
         ConversationParticipant,
         ConversationMute,
+        ConversationPin,
         ConversationRead,
         ConversationClear,
         Follow,

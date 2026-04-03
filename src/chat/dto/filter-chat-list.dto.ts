@@ -46,4 +46,23 @@ export class FilterChatDto extends PaginationDto {
   })
   @IsBoolean()
   isRead?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Filter chats by pinned status for the current user',
+    example: true,
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) {
+      return true;
+    }
+
+    if (value === 'false' || value === false) {
+      return false;
+    }
+
+    return undefined;
+  })
+  @IsBoolean()
+  isPinned?: boolean;
 }

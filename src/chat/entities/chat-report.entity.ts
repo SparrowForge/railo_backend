@@ -1,9 +1,10 @@
 import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
 import { User } from "src/users/entities/user.entity";
 import { ChatReportCriteria } from "./chat-report-criteria.entity";
+import { Conversation } from "src/conversation/entities/conversation.entity";
 
 @Entity('rillo_chat_reports')
-@Unique(['loggedInUserId', 'targetUserId'])
+@Unique(['loggedInUserId', 'conversationId'])
 export class ChatReport {
     @PrimaryGeneratedColumn('uuid')
     id: string;
@@ -12,7 +13,7 @@ export class ChatReport {
     loggedInUserId: string;
 
     @Column({ type: 'uuid' })
-    targetUserId: string;
+    conversationId: string;
 
     @CreateDateColumn()
     createdAt: Date;
@@ -34,7 +35,7 @@ export class ChatReport {
     @JoinColumn({ name: 'loggedInUserId' })
     loggedInUser: User;
 
-    @ManyToOne(() => User, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'userId' })
-    targetUser: User;
+    @ManyToOne(() => Conversation, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'conversationId' })
+    conversation: Conversation;
 }
