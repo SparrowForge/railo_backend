@@ -1,13 +1,9 @@
-import { IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class CommentDto {
     @IsNotEmpty()
     @IsUUID()
     postId: string
-
-    // @IsNotEmpty()
-    // @IsUUID()
-    // userId: string
 
     @IsString()
     @MaxLength(2000)
@@ -16,4 +12,8 @@ export class CommentDto {
     @IsOptional()
     @IsUUID()
     parentId?: string
+
+    @IsNumber()
+    @IsOptional()
+    file_id: number;
 }

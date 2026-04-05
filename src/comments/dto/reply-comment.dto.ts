@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class ReplyCommentDto {
     @IsNotEmpty()
@@ -10,4 +10,8 @@ export class ReplyCommentDto {
     @IsString()
     @MaxLength(2000)
     text: string;
+
+    @IsNumber()
+    @IsOptional()
+    file_id: number;
 }

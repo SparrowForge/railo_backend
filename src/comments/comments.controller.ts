@@ -38,7 +38,7 @@ export class CommentsController {
     @ApiResponse({ status: 404, description: 'Post not found', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
     async update(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() updatePostDto: UpdateCommentsDto,) {
-        const post = await this.commentService.update(id, updatePostDto.text);
+        const post = await this.commentService.update(id, updatePostDto);
         return new BaseResponseDto(post, 'Post updated successfully');
     }
 

@@ -10,6 +10,7 @@ import { ReplyCommentDto } from './dto/reply-comment.dto';
 import { NotificationService } from 'src/notifications/notifications.service';
 import { NotificationTypeEnum } from 'src/notifications/entity/notification-type.enum';
 import { NotificationOptions } from 'src/notifications/entity/notification-options';
+import { UpdateCommentsDto } from './dto/UpdateComments.Dto';
 
 @Injectable()
 export class CommentService {
@@ -26,12 +27,13 @@ export class CommentService {
         private readonly notificationService: NotificationService,
     ) { }
 
-    async addComment(userId: string, { postId, text, parentId }: CommentDto) {
+    async addComment(userId: string, { postId, text, parentId, file_id }: CommentDto) {
         const comment = this.commentRepo.create({
             postId,
             userId,
             text,
             parentId: parentId ?? null,
+            file_id: file_id
         });
 
         await this.commentRepo.save(comment);
@@ -62,7 +64,7 @@ export class CommentService {
         return comment;
     }
 
-    async update(commentId: string, text: string) {
+    async update(commentId: string, dto: UpdateCommentsDto) {
         const comment = await this.commentRepo.findOne({
             where: {
                 id: commentId,
@@ -73,7 +75,9 @@ export class CommentService {
             throw new NotFoundException();
         }
 
-        comment.text = text;
+        comment.text = dto.text;
+        comment.file_id = dto.file_id;
+
 
         return this.commentRepo.save(comment);
     }
@@ -96,7 +100,7 @@ export class CommentService {
                 order: {
                     createdAt: 'ASC', // Facebook-style
                 },
-                relations: ['user', 'user.file'],
+                relations: ['user', 'user.file', 'file'],
                 take: limit,
                 skip: skip,
             });
@@ -117,7 +121,7 @@ export class CommentService {
     async getCommentsById(id: string) {
         return await this.commentRepo.findAndCount({
             where: { id },
-            relations: ['user', 'user.file']
+            relations: ['user', 'user.file', 'file']
         });
     }
 
@@ -160,7 +164,7 @@ export class CommentService {
     }
 
 
-    async replyToComment(userId: string, { parentCommentId, text }: ReplyCommentDto) {
+    async replyToComment(userId: string, { parentCommentId, text, file_id }: ReplyCommentDto) {
         const parentComment = await this.commentRepo.findOne({
             where: {
                 id: parentCommentId,
@@ -184,6 +188,7 @@ export class CommentService {
             userId,
             text,
             parentId: parentCommentId,
+            file_id: file_id
         });
 
         await this.commentRepo.save(reply);
@@ -212,7 +217,7 @@ export class CommentService {
                     parentId: parentCommentId,
                     deletedAt: IsNull(),
                 },
-                relations: ['user'],
+                relations: ['user', 'user.file', 'file'],
                 order: { createdAt: 'ASC' },
                 take: limit,
                 skip: skip,

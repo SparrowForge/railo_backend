@@ -1,3 +1,4 @@
+import { Files } from "src/files/entities/file.entity";
 import { User } from "src/users/entities/user.entity";
 import { Entity, Index, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn, DeleteDateColumn } from "typeorm";
 
@@ -13,6 +14,8 @@ export class Comments {
     @Column({ type: 'uuid' })
     postId: string;
 
+    @Column({ nullable: true })
+    file_id: number;
 
     @Column({ type: 'uuid' })
     userId: string;
@@ -47,4 +50,8 @@ export class Comments {
     @ManyToOne(() => User, { nullable: true })
     @JoinColumn({ name: 'userId' })
     user: User;
+
+    @ManyToOne(() => Files, { nullable: true })
+    @JoinColumn({ name: 'file_id' })
+    file: Files;
 }
