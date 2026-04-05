@@ -1,0 +1,13 @@
+{
+  "id": "b7966a50-30b4-439c-a73a-46adee78e5c0",
+  "benifits": [
+    {
+      "id": "20762ef6-fea1-4353-b5de-f1407a3c5843",
+      "desc": "test"
+    }
+  ],
+  "price": 0,
+  "discountPrice": 0,
+  "duration": 0,
+  "type": "popular/bestdeal"
+}
