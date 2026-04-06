@@ -6,6 +6,7 @@ import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
+import { existsSync } from 'fs';
 import { join } from 'path';
 
 import { UsersModule } from '../users/users.module';
@@ -21,6 +22,21 @@ import { GoogleAuthService } from './google-auth.service';
 import { AppleAuthService } from './apple-auth.service';
 import { UserLocationService } from 'src/user-location/user-location.service';
 import { UserLocation } from 'src/user-location/entities/user-location.entity';
+
+const resolveTemplatesDir = (): string => {
+  const candidates = [
+    join(process.cwd(), 'dist', 'src', 'auth', 'templates'),
+    join(process.cwd(), 'dist', 'auth', 'templates'),
+    join(__dirname, 'templates'),
+    join(__dirname, '..', 'auth', 'templates'),
+    join(process.cwd(), 'src', 'auth', 'templates'),
+  ];
+
+  return (
+    candidates.find((candidate) => existsSync(candidate)) ??
+    join(process.cwd(), 'src', 'auth', 'templates')
+  );
+};
 
 @Module({
   imports: [
@@ -38,19 +54,7 @@ import { UserLocation } from 'src/user-location/entities/user-location.entity';
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => {
-        // Determine templates directory based on environment
-        // In production (Vercel, Docker, etc.), templates are in dist/auth/templates
-        // In development, templates are in src/auth/templates
-        let templatesDir: string;
-
-        if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
-          // For Vercel and other serverless/container deployments
-          // Try multiple possible paths to handle different deployment scenarios
-          templatesDir = join(__dirname, '..', 'auth', 'templates');
-        } else {
-          // For local development
-          templatesDir = join(process.cwd(), 'src', 'auth', 'templates');
-        }
+        const templatesDir = resolveTemplatesDir();
 
         return {
           transport: {
