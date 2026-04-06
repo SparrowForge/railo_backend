@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 
 import { PaginatedResponseDto } from '../common/dto/paginated-response.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
@@ -8,25 +8,15 @@ import { UserLocation } from './entities/user-location.entity';
 import { CreateUserLocationDto } from './dto/create-user-location.dto';
 import { FilterUserLocationDto } from './dto/filter-user-location.dto';
 import { UpdateUserLocationDto } from './dto/update-user-location.dto';
-import { User } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class UserLocationService {
     constructor(
         @InjectRepository(UserLocation)
         private userlocationRepository: Repository<UserLocation>,
-
-        @InjectRepository(User)
-        private userRepository: Repository<User>,
     ) { }
 
     async create(userlocationDto: CreateUserLocationDto) {
-        const user = await this.userRepository.findOne({
-            where: { id: userlocationDto.user_id },
-        });
-        if (!user) {
-            throw new Error('User not found');
-        }
         const userlocation = this.userlocationRepository.create({
             ...userlocationDto,
             location: {
@@ -34,7 +24,20 @@ export class UserLocationService {
                 coordinates: [userlocationDto.longitude, userlocationDto.latitude],
             },
         });
-        return this.userlocationRepository.save(userlocation);
+
+        try {
+            return await this.userlocationRepository.save(userlocation);
+        } catch (error) {
+            if (error instanceof QueryFailedError) {
+                const driverError = error.driverError as { code?: string };
+
+                if (driverError?.code === '23503') {
+                    throw new BadRequestException('User not found');
+                }
+            }
+
+            throw new InternalServerErrorException('Failed to save user location');
+        }
     }
 
     async findAll(
