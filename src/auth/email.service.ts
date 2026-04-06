@@ -49,7 +49,7 @@ export class EmailService {
       console.log('email: ', email)
       await this.mailerService.sendMail({
         to: email,
-        subject: 'Welcome to Solo Clash - Your Equestrian Journey Begins!',
+        subject: 'Welcome to Rillo - Your Equestrian Journey Begins!',
         template: 'welcome',
         context: {
           fullName,
