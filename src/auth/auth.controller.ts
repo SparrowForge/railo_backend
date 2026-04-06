@@ -16,17 +16,26 @@ import { generateRandomHashedPassword } from './../lib/random-password';
 import { AppleAuthService } from './apple-auth.service';
 import { CreateUserLocationDto } from 'src/user-location/dto/create-user-location.dto';
 import { UserLocationService } from 'src/user-location/user-location.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { UserLocation } from 'src/user-location/entities/user-location.entity';
 
 @ApiTags('Auth')
 @Controller('api/v1/auth')
 @Public()
 export class AuthController {
   constructor(
+
+    @InjectRepository(UserLocation)
+    private userlocationRepository: Repository<UserLocation>,
+
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
     private readonly googleAuthService: GoogleAuthService,
     private readonly appleAuthService: AppleAuthService,
     private readonly userLocationService: UserLocationService,
+
+
   ) { }
 
   @Post('register')
@@ -72,7 +81,17 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
   async sendChatRequest(@Body() dto: CreateUserLocationDto) {
     // dto.user_id = user.userId;
-    const result = await this.userLocationService.create(dto);
+    // const result = await this.userLocationService.create(dto);
+    const userlocation = this.userlocationRepository.create({
+      ...dto,
+      location: {
+        type: "Point",
+        coordinates: [dto.longitude, dto.latitude],
+      },
+    });
+
+    const result = await this.userlocationRepository.save(userlocation);
+
     return new BaseResponseDto(result, 'UserLocation saved successfully');
   }
 
