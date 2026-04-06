@@ -112,6 +112,11 @@ export class User {
   @ApiProperty()
   @Column({ type: 'boolean', default: false, nullable: false })
   is_Save_your_activity_on_this_device: boolean;
+
+  @ApiProperty()
+  @Column({ type: 'boolean', default: false, nullable: true })
+  isSubscribedUser: boolean;
+
   //-----------------------------------------------
 
   /*Relations */

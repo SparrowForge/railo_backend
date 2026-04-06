@@ -43,29 +43,37 @@ export class EmailService {
   /**
    * Send welcome email to new users with professional template
    */
-  async sendWelcomeEmail(email: string, fullName: string): Promise<void> {
-    try {
-      this.logger.log(`Sending welcome email to ${email} for ${fullName}`);
-      console.log('email: ', email)
-      await this.mailerService.sendMail({
+  sendWelcomeEmail(email: string, fullName: string): Promise<void> {
+    if (!email) {
+      this.logger.warn(
+        'Skipping welcome email because no recipient email was provided',
+      );
+      return Promise.resolve();
+    }
+
+    this.logger.log(`Queueing welcome email to ${email} for ${fullName}`);
+
+    return this.mailerService
+      .sendMail({
         to: email,
         subject: 'Welcome to Rillo - Your Equestrian Journey Begins!',
         template: 'welcome',
         context: {
           fullName,
         },
-      });
-      this.logger.log(`Welcome email sent successfully to ${email}`);
-    } catch (error) {
-      this.logger.error(`Failed to send welcome email to ${email}`, error);
+      })
+      .then(() => {
+        this.logger.log(`Welcome email sent successfully to ${email}`);
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof Error ? error.stack ?? error.message : String(error);
 
-      // Don't throw error for welcome email to avoid blocking user registration
-      if (this.configService.get<string>('NODE_ENV') === 'development') {
-        this.logger.log(
-          `Fallback - Welcome email should have been sent to ${email} for ${fullName}`,
+        this.logger.error(
+          `Welcome email failed for ${email}. Registration will continue without email delivery.`,
+          message,
         );
-      }
-    }
+      });
   }
 
   /**
