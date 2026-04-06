@@ -46,7 +46,7 @@ export class AuthController {
     @Body() createUserDto: CreateUserDto,
   ): Promise<BaseResponseDto<any>> {
     try {
-      return this.authService.register(createUserDto);
+      return await this.authService.register(createUserDto);
     } catch (error) {
       console.log(error);
       throw new BadRequestException("Some error happened during registration. Please try again later.")
@@ -82,6 +82,7 @@ export class AuthController {
   async sendChatRequest(@Body() dto: CreateUserLocationDto) {
     // dto.user_id = user.userId;
     // const result = await this.userLocationService.create(dto);
+    console.log('user-location-save', dto)
     const userlocation = this.userlocationRepository.create({
       ...dto,
       location: {

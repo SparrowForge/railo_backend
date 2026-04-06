@@ -61,7 +61,9 @@ export class AuthService {
     const user = await this.usersService.create(createUserDto);
     const { password, ...result } = user;
 
-    await this.emailService.sendWelcomeEmail(user.email, user.name);
+    void this.emailService.sendWelcomeEmail(user.email, user.name).catch((error) => {
+      this.logger.error(`Welcome email failed for user ${user.id}`, error);
+    });
 
     return new BaseResponseDto(result, 'User registered successfully');
   }
