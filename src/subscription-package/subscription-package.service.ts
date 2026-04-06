@@ -52,6 +52,11 @@ export class SubscriptionPackageService {
         type: filters.type,
       });
     }
+    if (filters?.isActive !== undefined) {
+      queryBuilder.andWhere('subscriptionPackage.isActive = :isActive', {
+        isActive: filters.isActive,
+      });
+    }
 
     const [items, total] = await queryBuilder.getManyAndCount();
     const totalPages = Math.ceil(total / limit);

@@ -42,6 +42,8 @@ import { PostPollVote } from './post/entities/post-poll-vote.entity';
 import { ChatReport } from './chat/entities/chat-report.entity';
 import { ChatReportCriteria } from './chat/entities/chat-report-criteria.entity';
 import { UserChattHide } from './chat/entities/user-chat-hide.entity';
+import { SubscriptionPackage } from './subscription-package/entities/subscription-package.entity';
+import { SubscriptionPackageBenefit } from './subscription-package/entities/subscription-package-benefit.entity';
 
 @Injectable()
 
@@ -99,7 +101,9 @@ export class AppService implements TypeOrmOptionsFactory {
         Contact,
         UserLocation,
         UserChattHide,
-        PollOptions
+        PollOptions,
+        SubscriptionPackage,
+        SubscriptionPackageBenefit
       ],
       synchronize: false, // Never use synchronize in production
       logging: isDevelopment,

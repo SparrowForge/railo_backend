@@ -20,6 +20,10 @@ export class SubscriptionPackage {
   @Column({ type: 'float', default: 0 })
   price: number;
 
+  @ApiProperty({ description: 'Discounted percentage of package price', example: 0 })
+  @Column({ type: 'float', default: 0, nullable: true })
+  discountPercentage: number;
+
   @ApiProperty({ description: 'Discounted package price', example: 0 })
   @Column({ type: 'float', default: 0 })
   discountPrice: number;
@@ -31,6 +35,10 @@ export class SubscriptionPackage {
   @ApiProperty({ description: 'Package type', example: 'popular/bestdeal' })
   @Column({ type: 'varchar', length: 100 })
   type: string;
+
+  @ApiProperty({ description: 'Discounted package status', example: true })
+  @Column({ type: 'boolean', default: true })
+  isActive: boolean;
 
   @ApiProperty({ description: 'Created at' })
   @CreateDateColumn({ type: 'timestamp' })

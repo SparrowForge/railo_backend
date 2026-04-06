@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { PackageTypeEnum } from './package-type.enum';
 
 class CreateSubscriptionPackageBenefitDto {
   @ApiProperty({
@@ -24,6 +25,12 @@ export class CreateSubscriptionPackageDto {
   @IsNumber()
   price: number;
 
+  @ApiProperty({ description: 'Discounted percentage of package price', example: 0 })
+  @Type(() => Number)
+  @IsNumber()
+  @IsOptional()
+  discountPercentage: number;
+
   @ApiProperty({ description: 'Discounted package price', example: 0 })
   @Type(() => Number)
   @IsNumber()
@@ -35,9 +42,15 @@ export class CreateSubscriptionPackageDto {
   duration: number;
 
   @ApiProperty({ description: 'Package type', example: 'popular/bestdeal' })
-  @IsString()
+  @IsEnum(PackageTypeEnum)
   @IsNotEmpty()
-  type: string;
+  type: PackageTypeEnum;
+
+  @ApiProperty({ description: 'Discounted package status', example: true })
+  @Type(() => Boolean)
+  @IsBoolean()
+  @IsOptional()
+  isActive: boolean = true;
 
   @ApiProperty({
     description: 'Benefit details rows',
