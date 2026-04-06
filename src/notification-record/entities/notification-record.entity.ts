@@ -32,6 +32,10 @@ export class NotificationRecord {
   @Column({ unique: false, length: 255, nullable: false })
   notificationMessage: string;
 
+  @ApiProperty({ description: 'Notification payload', example: 'Some payload to send to the user.', })
+  @Column({ unique: false, nullable: true })
+  payload: string;
+
   @ApiProperty({ description: 'Delivery Status', example: NotificationDeliveryStatusType.Pending, enum: NotificationDeliveryStatusType, })
   @Column({ type: 'enum', enum: NotificationDeliveryStatusType, nullable: true, default: NotificationDeliveryStatusType.Pending, })
   deliveryStatus?: NotificationDeliveryStatusType;

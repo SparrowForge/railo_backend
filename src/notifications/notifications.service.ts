@@ -8,6 +8,7 @@ import { FireBaseTopicsEnum } from './data/fire-base-topics.data';
 import { UserToFirebaseTokenMap } from './entity/userToFirebaseTokenMap.entity';
 import { NotificationRecord } from '../notification-record/entities/notification-record.entity';
 import { NotificationDeliveryStatusType } from 'src/notification-record/data/notification-delivery-status-type.data';
+import { PostNotification } from 'src/post/entities/post-notification.entity';
 
 
 @Injectable()
@@ -18,6 +19,9 @@ export class NotificationService {
 
     @InjectRepository(NotificationRecord)
     private notificationRecordRepository: Repository<NotificationRecord>,
+
+    @InjectRepository(PostNotification)
+    private postNotificationRepository: Repository<PostNotification>,
 
     @Inject('FIREBASE_ADMIN')
     private readonly firebaseAdmin: typeof admin,
@@ -167,7 +171,8 @@ export class NotificationService {
       notificationMessage: body,
       deliveryStatus: NotificationDeliveryStatusType.Delivered,
       userId: userId,
-      isSeen: false
+      isSeen: false,
+      payload: JSON.stringify(payload),
     });
     await this.notificationRecordRepository.save(notificationRecord);
 
@@ -197,6 +202,49 @@ export class NotificationService {
         token: In(res.failedTokens),
       });
     }
+  }
+
+  async getPostNotificationSubscriberIds(
+    postId: string,
+    excludeUserIds: string[] = [],
+  ): Promise<string[]> {
+    const subscriptions = await this.postNotificationRepository.find({
+      where: { postId },
+      select: { userId: true },
+    });
+
+    const excludedIds = new Set(excludeUserIds);
+
+    return [...new Set(
+      subscriptions
+        .map((subscription) => subscription.userId)
+        .filter((userId) => !excludedIds.has(userId)),
+    )];
+  }
+
+  async sendNotificationToUsers({
+    userIds,
+    title,
+    body,
+    payload,
+  }: {
+    userIds: string[];
+    title: string;
+    body: string;
+    payload?: Record<string, string>;
+  }) {
+    const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
+
+    await Promise.allSettled(
+      uniqueUserIds.map((userId) =>
+        this.sendNotificationToUser({
+          userId,
+          title,
+          body,
+          payload,
+        }),
+      ),
+    );
   }
 
   async subscribeToTopic(tokens: string[], topic: FireBaseTopicsEnum) {

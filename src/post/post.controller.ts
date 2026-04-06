@@ -155,6 +155,26 @@ export class PostController {
         return new BaseResponseDto(res, 'Post pin toggled successfully');
     }
 
+    @Post(':id/enable-notification')
+    @ApiOperation({ summary: 'Enable notifications for a post' })
+    @ApiResponse({ status: 200, description: 'Post notification enabled successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Post not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async enablePostNotification(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+        const res = await this.postService.enablePostNotification(id, user.userId);
+        return new BaseResponseDto(res, 'Post notification enabled successfully');
+    }
+
+    @Post(':id/disable-notification')
+    @ApiOperation({ summary: 'Disable notifications for a post' })
+    @ApiResponse({ status: 200, description: 'Post notification disabled successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Post not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async disablePostNotification(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+        const res = await this.postService.disablePostNotification(id, user.userId);
+        return new BaseResponseDto(res, 'Post notification disabled successfully');
+    }
+
     @Post(':id/vote')
     @ApiOperation({ summary: 'Vote on a poll post' })
     @ApiResponse({ status: 200, description: 'Poll voted successfully', type: BaseResponseDto<any>, })

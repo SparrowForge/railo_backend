@@ -53,12 +53,18 @@ export class CommentService {
         });
 
         if (post) {
-            await this.notificationService.sendNotificationToUser({
-                userId: post.userId,
+            const subscriberIds =
+                await this.notificationService.getPostNotificationSubscriberIds(
+                    postId,
+                    [userId],
+                );
+
+            await this.notificationService.sendNotificationToUsers({
+                userIds: [post.userId, ...subscriberIds],
                 title: NotificationOptions[NotificationTypeEnum.PostComment].title(),
                 body: NotificationOptions[NotificationTypeEnum.PostComment].body(),
                 payload: NotificationOptions[NotificationTypeEnum.PostComment].payload(),
-            })
+            });
         }
 
         return comment;

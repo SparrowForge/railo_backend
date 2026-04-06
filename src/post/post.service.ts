@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -20,6 +19,7 @@ import { PaginatedResponseDto } from 'src/common/dto/paginated-response.dto';
 import { UserLocation } from 'src/user-location/entities/user-location.entity';
 import { FilterPostDto } from './dto/filter-post.dto';
 import { UserInteractionEnum } from './dto/user-interaction-type.enum';
+import { FilterCommentsEnum } from './dto/filter-comments.enum';
 import { User } from 'src/users/entities/user.entity';
 import { Gender } from 'src/users/enum/gender.enum';
 import { NotificationService } from 'src/notifications/notifications.service';
@@ -31,6 +31,7 @@ import { CreatePostReportDto } from './dto/create-post-report.dto';
 import { PostReport } from './entities/post-report.entity';
 import { PostReportCriteria } from './entities/post-report-criteria.entity';
 import { PostHide } from './entities/post-hide.entity';
+import { PostNotification } from './entities/post-notification.entity';
 import { UserPosttHide } from './entities/user-post-hide.entity';
 import { PostPollVote } from './entities/post-poll-vote.entity';
 
@@ -73,6 +74,9 @@ export class PostService {
 
         @InjectRepository(PostHide)
         private readonly postHideRepo: Repository<PostHide>,
+
+        @InjectRepository(PostNotification)
+        private readonly postNotificationRepo: Repository<PostNotification>,
 
         @InjectRepository(UserPosttHide)
         private readonly userHideRepo: Repository<UserPosttHide>,
@@ -293,6 +297,13 @@ export class PostService {
             where: { user_id: userId },
             order: { created_at: 'DESC' },
         });
+        const currentUser = await this.dataSource.getRepository(User).findOne({
+            where: { id: userId },
+            select: {
+                id: true,
+                user_name: true,
+            },
+        });
 
         const queryBuilder = this.postRepo
             .createQueryBuilder('post')
@@ -307,6 +318,10 @@ export class PostService {
             .addSelect(
                 'CASE WHEN currentUserPollVote.id IS NOT NULL THEN true ELSE false END',
                 'isVoted',
+            )
+            .addSelect(
+                'CASE WHEN currentUserPostNotification.id IS NOT NULL THEN true ELSE false END',
+                'isNotificationEnabled',
             )
             .addSelect(
                 'currentUserPollVote.postPollOptionId',
@@ -385,6 +400,12 @@ export class PostService {
                 { userId },
             )
             .leftJoin(
+                PostNotification,
+                'currentUserPostNotification',
+                'currentUserPostNotification.postId = post.id AND currentUserPostNotification.userId = :userId',
+                { userId },
+            )
+            .leftJoin(
                 UserLocation,
                 'userLocation',
                 `userLocation.id = (
@@ -427,6 +448,49 @@ export class PostService {
             queryBuilder.andWhere('post.text ILIKE :search', {
                 search: `%${filters.search}%`,
             });
+        }
+        if (filters?.filterComments === FilterCommentsEnum.Own) {
+            queryBuilder.andWhere(
+                `EXISTS (
+                    SELECT 1
+                    FROM "rillo_comments" "comment"
+                    WHERE "comment"."postId" = post.id
+                      AND "comment"."userId" = :userId
+                      AND "comment"."deletedAt" IS NULL
+                )`,
+                { userId },
+            );
+        }
+        if (filters?.filterComments === FilterCommentsEnum.OwnPlusMentions) {
+            if (currentUser?.user_name) {
+                queryBuilder.andWhere(
+                    `EXISTS (
+                        SELECT 1
+                        FROM "rillo_comments" "comment"
+                        WHERE "comment"."postId" = post.id
+                          AND "comment"."deletedAt" IS NULL
+                          AND (
+                            "comment"."userId" = :userId
+                            OR "comment"."text" ILIKE :mentionPattern
+                          )
+                    )`,
+                    {
+                        userId,
+                        mentionPattern: `%@${currentUser.user_name}%`,
+                    },
+                );
+            } else {
+                queryBuilder.andWhere(
+                    `EXISTS (
+                        SELECT 1
+                        FROM "rillo_comments" "comment"
+                        WHERE "comment"."postId" = post.id
+                          AND "comment"."userId" = :userId
+                          AND "comment"."deletedAt" IS NULL
+                    )`,
+                    { userId },
+                );
+            }
         }
         if (filters?.userInteractionType) {
             if (filters.userInteractionType === UserInteractionEnum.TheBest) {
@@ -528,6 +592,10 @@ export class PostService {
                 'CASE WHEN currentUserLike.id IS NOT NULL THEN true ELSE false END',
                 'isLiked',
             )
+            .addSelect(
+                'CASE WHEN currentUserPostNotification.id IS NOT NULL THEN true ELSE false END',
+                'isNotificationEnabled',
+            )
             .leftJoinAndSelect('post.user', 'user')
             .leftJoinAndSelect('user.file', 'userFile')
             .leftJoinAndSelect('post.postFiles', 'postFiles')
@@ -550,6 +618,12 @@ export class PostService {
                 'currentUserPin.postId = post.id AND currentUserPin.userId = :userId',
                 { userId },
             )
+            .leftJoin(
+                PostNotification,
+                'currentUserPostNotification',
+                'currentUserPostNotification.postId = post.id AND currentUserPostNotification.userId = :userId',
+                { userId },
+            )
             .where(
                 '(f.followerId IS NOT NULL OR post.userId = :userId)',
                 { userId },
@@ -567,6 +641,8 @@ export class PostService {
             ...post,
             isLiked: raw[index].isLiked === true || raw[index].isLiked === 'true',
             isPinned: raw[index].isPinned === true || raw[index].isPinned === 'true',
+            isNotificationEnabled:
+                raw[index].isNotificationEnabled === true || raw[index].isNotificationEnabled === 'true',
             form: 2025,
             likes: 156,
             faves: 46,
@@ -604,6 +680,13 @@ export class PostService {
             where: { user_id: userId },
             order: { created_at: 'DESC' },
         });
+        const currentUser = await this.dataSource.getRepository(User).findOne({
+            where: { id: userId },
+            select: {
+                id: true,
+                user_name: true,
+            },
+        });
 
         const queryBuilder = this.postRepo
             .createQueryBuilder('post')
@@ -618,6 +701,10 @@ export class PostService {
             .addSelect(
                 'CASE WHEN currentUserPollVote.id IS NOT NULL THEN true ELSE false END',
                 'isVoted',
+            )
+            .addSelect(
+                'CASE WHEN currentUserPostNotification.id IS NOT NULL THEN true ELSE false END',
+                'isNotificationEnabled',
             )
             .addSelect(
                 'currentUserPollVote.postPollOptionId',
@@ -694,6 +781,12 @@ export class PostService {
                 PostPollVote,
                 'currentUserPollVote',
                 'currentUserPollVote.postId = post.id AND currentUserPollVote.userId = :userId',
+                { userId },
+            )
+            .leftJoin(
+                PostNotification,
+                'currentUserPostNotification',
+                'currentUserPostNotification.postId = post.id AND currentUserPostNotification.userId = :userId',
                 { userId },
             )
             .leftJoin(
@@ -775,6 +868,49 @@ export class PostService {
                 search: `%${filters?.search}%`,
             });
         }
+        if (filters?.filterComments === FilterCommentsEnum.Own) {
+            queryBuilder.andWhere(
+                `EXISTS (
+                    SELECT 1
+                    FROM "rillo_comments" "comment"
+                    WHERE "comment"."postId" = post.id
+                      AND "comment"."userId" = :userId
+                      AND "comment"."deletedAt" IS NULL
+                )`,
+                { userId },
+            );
+        }
+        if (filters?.filterComments === FilterCommentsEnum.OwnPlusMentions) {
+            if (currentUser?.user_name) {
+                queryBuilder.andWhere(
+                    `EXISTS (
+                        SELECT 1
+                        FROM "rillo_comments" "comment"
+                        WHERE "comment"."postId" = post.id
+                          AND "comment"."deletedAt" IS NULL
+                          AND (
+                            "comment"."userId" = :userId
+                            OR "comment"."text" ILIKE :mentionPattern
+                          )
+                    )`,
+                    {
+                        userId,
+                        mentionPattern: `%@${currentUser.user_name}%`,
+                    },
+                );
+            } else {
+                queryBuilder.andWhere(
+                    `EXISTS (
+                        SELECT 1
+                        FROM "rillo_comments" "comment"
+                        WHERE "comment"."postId" = post.id
+                          AND "comment"."userId" = :userId
+                          AND "comment"."deletedAt" IS NULL
+                    )`,
+                    { userId },
+                );
+            }
+        }
 
         const { entities, raw } = await queryBuilder.getRawAndEntities();
 
@@ -784,6 +920,8 @@ export class PostService {
             isLiked: raw[index].isLiked === true || raw[index].isLiked === 'true',
             isPinned: raw[index].isPinned === true || raw[index].isPinned === 'true',
             isVoted: raw[index].isVoted === true || raw[index].isVoted === 'true',
+            isNotificationEnabled:
+                raw[index].isNotificationEnabled === true || raw[index].isNotificationEnabled === 'true',
             votedId: raw[index].votedId ?? raw[index].votedid ?? null,
             user_area: raw[index].userArea ?? raw[index].userarea ?? null,
             user_city: raw[index].userCity ?? raw[index].usercity ?? null,
@@ -858,13 +996,17 @@ export class PostService {
             1,
         );
 
-        await this.notificationService.sendNotificationToUser(
-            {
-                userId: post.userId,
-                title: NotificationOptions[NotificationTypeEnum.PostLike].title(),
-                body: NotificationOptions[NotificationTypeEnum.PostLike].body(),
-                payload: NotificationOptions[NotificationTypeEnum.PostLike].payload({ postId: postId }),
-            })
+        const subscriberIds = await this.notificationService.getPostNotificationSubscriberIds(
+            postId,
+            [userId],
+        );
+
+        await this.notificationService.sendNotificationToUsers({
+            userIds: [post.userId, ...subscriberIds],
+            title: NotificationOptions[NotificationTypeEnum.PostLike].title(),
+            body: NotificationOptions[NotificationTypeEnum.PostLike].body(),
+            payload: NotificationOptions[NotificationTypeEnum.PostLike].payload({ postId: postId }),
+        });
 
         return { liked: true };
     }
@@ -921,6 +1063,51 @@ export class PostService {
         );
 
         return { pinned: true };
+    }
+
+    async enablePostNotification(postId: string, userId: string) {
+        const post = await this.postRepo.findOne({
+            where: {
+                id: postId,
+            },
+        });
+
+        if (!post) {
+            throw new NotFoundException('Post not found');
+        }
+
+        await this.postNotificationRepo.delete({ postId, userId });
+
+        const entity = this.postNotificationRepo.create({
+            postId,
+            userId,
+        });
+
+        await this.postNotificationRepo.save(entity);
+
+        return {
+            postId,
+            notificationsEnabled: true,
+        };
+    }
+
+    async disablePostNotification(postId: string, userId: string) {
+        const post = await this.postRepo.findOne({
+            where: {
+                id: postId,
+            },
+        });
+
+        if (!post) {
+            throw new NotFoundException('Post not found');
+        }
+
+        await this.postNotificationRepo.delete({ postId, userId });
+
+        return {
+            postId,
+            notificationsEnabled: false,
+        };
     }
 
     async votePoll(postId: string, pollOptionId: string, userId: string) {
@@ -1033,6 +1220,10 @@ export class PostService {
                 'CASE WHEN currentUserLike.id IS NOT NULL THEN true ELSE false END',
                 'isLiked',
             )
+            .addSelect(
+                'CASE WHEN currentUserPostNotification.id IS NOT NULL THEN true ELSE false END',
+                'isNotificationEnabled',
+            )
             .leftJoinAndSelect('post.user', 'user')
             .leftJoinAndSelect('user.file', 'userFile')
             .leftJoinAndSelect('post.postFiles', 'postFiles')
@@ -1050,6 +1241,12 @@ export class PostService {
                 'currentUserLike.postId = post.id AND currentUserLike.userId = :userId',
                 { userId },
             )
+            .leftJoin(
+                PostNotification,
+                'currentUserPostNotification',
+                'currentUserPostNotification.postId = post.id AND currentUserPostNotification.userId = :userId',
+                { userId },
+            )
             .where('post.deletedAt IS NULL')
             .orderBy('postPin.createdAt', 'DESC')
             .skip(skip)
@@ -1061,6 +1258,8 @@ export class PostService {
             ...post,
             isLiked: raw[index].isLiked === true || raw[index].isLiked === 'true',
             isPinned: raw[index].isPinned === true || raw[index].isPinned === 'true',
+            isNotificationEnabled:
+                raw[index].isNotificationEnabled === true || raw[index].isNotificationEnabled === 'true',
         }));
 
         const total = await queryBuilder.getCount();
@@ -1321,13 +1520,17 @@ export class PostService {
             1,
         );
 
-        await this.notificationService.sendNotificationToUser(
-            {
-                userId: originalPost.userId,
-                title: NotificationOptions[NotificationTypeEnum.PostShare].title(),
-                body: NotificationOptions[NotificationTypeEnum.PostShare].body(),
-                payload: NotificationOptions[NotificationTypeEnum.PostShare].payload({ postId: originalPostId }),
-            })
+        const subscriberIds = await this.notificationService.getPostNotificationSubscriberIds(
+            originalPostId,
+            [userId],
+        );
+
+        await this.notificationService.sendNotificationToUsers({
+            userIds: [originalPost.userId, ...subscriberIds],
+            title: NotificationOptions[NotificationTypeEnum.PostShare].title(),
+            body: NotificationOptions[NotificationTypeEnum.PostShare].body(),
+            payload: NotificationOptions[NotificationTypeEnum.PostShare].payload({ postId: originalPostId }),
+        });
 
         return this.postRepo.save(sharedPost);
     }

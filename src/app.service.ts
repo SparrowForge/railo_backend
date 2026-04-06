@@ -37,6 +37,7 @@ import { PostFile } from './post/entities/post-file.entity';
 import { PostReport } from './post/entities/post-report.entity';
 import { PostReportCriteria } from './post/entities/post-report-criteria.entity';
 import { PostHide } from './post/entities/post-hide.entity';
+import { PostNotification } from './post/entities/post-notification.entity';
 import { UserPosttHide } from './post/entities/user-post-hide.entity';
 import { PostPollVote } from './post/entities/post-poll-vote.entity';
 import { ChatReport } from './chat/entities/chat-report.entity';
@@ -90,6 +91,7 @@ export class AppService implements TypeOrmOptionsFactory {
         PostReport,
         PostReportCriteria,
         PostHide,
+        PostNotification,
         UserPosttHide,
         NotificationRecord,
         UserToFirebaseTokenMap,

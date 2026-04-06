@@ -13,11 +13,12 @@ import { PostFile } from './entities/post-file.entity';
 import { PostReport } from './entities/post-report.entity';
 import { PostReportCriteria } from './entities/post-report-criteria.entity';
 import { PostHide } from './entities/post-hide.entity';
+import { PostNotification } from './entities/post-notification.entity';
 import { UserPosttHide } from './entities/user-post-hide.entity';
 import { PostPollVote } from './entities/post-poll-vote.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Posts, PostLike, PostPin, PostView, UserLocation, PostPollOption, PostPollVote, PostFile, PostReport, PostReportCriteria, PostHide, UserPosttHide]), NotificationsModule],
+  imports: [TypeOrmModule.forFeature([Posts, PostLike, PostPin, PostView, UserLocation, PostPollOption, PostPollVote, PostFile, PostReport, PostReportCriteria, PostHide, PostNotification, UserPosttHide]), NotificationsModule],
   providers: [PostService],
   controllers: [PostController]
 })

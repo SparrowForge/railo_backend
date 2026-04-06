@@ -5,6 +5,7 @@ import { IsBoolean, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator
 import { PostVisibilityEnum } from 'src/common/enums/post-visibility.enum';
 import { UserInteractionEnum } from './user-interaction-type.enum';
 import { Transform } from 'class-transformer';
+import { FilterCommentsEnum } from './filter-comments.enum';
 
 export class FilterPostDto extends PaginationDto {
   @ApiProperty({ description: 'User Guid Id', example: 'xxxx-xxxx-xxxx-xxxx', required: true })
@@ -45,4 +46,8 @@ export class FilterPostDto extends PaginationDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @IsEnum(FilterCommentsEnum)
+  filterComments?: FilterCommentsEnum;
 }
