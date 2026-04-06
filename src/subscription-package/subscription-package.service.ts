@@ -52,7 +52,7 @@ export class SubscriptionPackageService {
         type: filters.type,
       });
     }
-    if (filters?.isActive !== undefined) {
+    if (typeof filters?.isActive === "boolean") {
       queryBuilder.andWhere('subscriptionPackage.isActive = :isActive', {
         isActive: filters.isActive,
       });

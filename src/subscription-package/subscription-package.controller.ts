@@ -21,6 +21,7 @@ export class SubscriptionPackageController {
   async findAll(@Query() filters: FilterSubscriptionPackageDto) {
     const { page, limit, ...subscriptionPackageFilters } = filters;
     const pagination = { page, limit };
+    console.log(subscriptionPackageFilters)
     const subscriptionPackages = await this.subscriptionPackageService.findAll(
       pagination,
       subscriptionPackageFilters,
