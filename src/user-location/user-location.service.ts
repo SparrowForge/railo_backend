@@ -8,15 +8,25 @@ import { UserLocation } from './entities/user-location.entity';
 import { CreateUserLocationDto } from './dto/create-user-location.dto';
 import { FilterUserLocationDto } from './dto/filter-user-location.dto';
 import { UpdateUserLocationDto } from './dto/update-user-location.dto';
+import { User } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class UserLocationService {
     constructor(
         @InjectRepository(UserLocation)
         private userlocationRepository: Repository<UserLocation>,
+
+        @InjectRepository(User)
+        private userRepository: Repository<User>,
     ) { }
 
     async create(userlocationDto: CreateUserLocationDto) {
+        const user = await this.userRepository.findOne({
+            where: { id: userlocationDto.user_id },
+        });
+        if (!user) {
+            throw new Error('User not found');
+        }
         const userlocation = this.userlocationRepository.create({
             ...userlocationDto,
             location: {
