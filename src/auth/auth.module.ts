@@ -19,11 +19,13 @@ import { PasswordResetService } from './password-reset.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { GoogleAuthService } from './google-auth.service';
 import { AppleAuthService } from './apple-auth.service';
+import { UserLocationService } from 'src/user-location/user-location.service';
+import { UserLocation } from 'src/user-location/entities/user-location.entity';
 
 @Module({
   imports: [
     UsersModule,
-    TypeOrmModule.forFeature([RefreshToken, PasswordResetToken]),
+    TypeOrmModule.forFeature([RefreshToken, PasswordResetToken, UserLocation]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -83,7 +85,8 @@ import { AppleAuthService } from './apple-auth.service';
     EmailService,
     JwtStrategy,
     GoogleAuthService,
-    AppleAuthService
+    AppleAuthService,
+    UserLocationService
   ],
   exports: [AuthService, JwtModule, JwtStrategy, EmailService, GoogleAuthService, AppleAuthService],
 })

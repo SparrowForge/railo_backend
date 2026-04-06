@@ -14,6 +14,8 @@ import { UsersService } from 'src/users/users.service';
 import { RolesEnum } from 'src/common/enums/role.enum';
 import { generateRandomHashedPassword } from './../lib/random-password';
 import { AppleAuthService } from './apple-auth.service';
+import { CreateUserLocationDto } from 'src/user-location/dto/create-user-location.dto';
+import { UserLocationService } from 'src/user-location/user-location.service';
 
 @ApiTags('Auth')
 @Controller('api/v1/auth')
@@ -24,6 +26,7 @@ export class AuthController {
     private readonly usersService: UsersService,
     private readonly googleAuthService: GoogleAuthService,
     private readonly appleAuthService: AppleAuthService,
+    private readonly userLocationService: UserLocationService,
   ) { }
 
   @Post('register')
@@ -60,6 +63,19 @@ export class AuthController {
   ): Promise<BaseResponseDto<any>> {
     return this.authService.refreshToken(token);
   }
+
+
+  @Post('user-location-save')
+  @ApiOperation({ summary: 'save userlocation' })
+  @ApiResponse({ status: 201, description: 'UserLocation save successfully', type: BaseResponseDto, })
+  @ApiResponse({ status: 400, description: 'UserLocation already exists', })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+  async sendChatRequest(@Body() dto: CreateUserLocationDto) {
+    // dto.user_id = user.userId;
+    const result = await this.userLocationService.create(dto);
+    return new BaseResponseDto(result, 'UserLocation saved successfully');
+  }
+
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
