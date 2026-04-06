@@ -45,12 +45,7 @@ export class AuthController {
   async register(
     @Body() createUserDto: CreateUserDto,
   ): Promise<BaseResponseDto<any>> {
-    try {
-      return await this.authService.register(createUserDto);
-    } catch (error) {
-      console.log(error);
-      throw new BadRequestException("Some error happened during registration. Please try again later.")
-    }
+    return this.authService.register(createUserDto);
   }
 
   @Post('login')
