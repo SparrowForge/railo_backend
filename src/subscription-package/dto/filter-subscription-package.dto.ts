@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform } from 'class-transformer';
 import { IsBoolean, IsEnum, IsOptional } from 'class-validator';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { PackageTypeEnum } from './package-type.enum';
@@ -11,7 +11,11 @@ export class FilterSubscriptionPackageDto extends PaginationDto {
   type: PackageTypeEnum;
 
   @ApiProperty({ description: 'Discounted package status', example: true })
-  @Type(() => Boolean)
+  @Transform(({ value }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return undefined;
+  })
   @IsBoolean()
   @IsOptional()
   isActive: boolean;
