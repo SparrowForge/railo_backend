@@ -5,6 +5,7 @@ import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { JwtStrategy } from '../auth/jwt.strategy';
+import { PaymentsModule } from '../payments/payments.module';
 import { User } from './entities/user.entity';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
@@ -16,6 +17,7 @@ import { UserLocation } from 'src/user-location/entities/user-location.entity';
   imports: [
     TypeOrmModule.forFeature([User, UserLocation, DeleteAccount, Contact]),
     PassportModule,
+    PaymentsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({

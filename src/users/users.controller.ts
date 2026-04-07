@@ -32,12 +32,16 @@ import { UpdateProfileRollaDto } from './dto/update-profile-rolla.dto';
 import { UpdatProfileUserNameDto } from './dto/update-profile-userName.dto';
 import { UpdatProfileLanguageDto } from './dto/update-profile-language.dto';
 import { UpdatProfileSettingsStatusChangeDto } from './dto/update-profile-settings-status-change.dto';
+import { PaymentsService } from '../payments/payments.service';
 
 @ApiTags('Users')
 @ApiBearerAuth()
 @Controller('api/v1/users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly paymentsService: PaymentsService,
+  ) { }
 
   @Post()
   @ApiOperation({
@@ -107,6 +111,18 @@ export class UsersController {
   async findNearestLocations(@CurrentUser() authUser: AuthUser) {
     const locations = await this.usersService.findNearestLocations(authUser.userId);
     return new BaseResponseDto(locations, 'Nearest user locations retrieved successfully');
+  }
+
+  @Get('me/subscription')
+  @ApiOperation({
+    summary: 'Get current user subscription',
+    description: 'Returns the logged-in user active subscription and related package/payment details.',
+  })
+  @ApiResponse({ status: 200, description: 'Current subscription retrieved successfully', type: BaseResponseDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+  async getCurrentSubscription(@CurrentUser() authUser: AuthUser) {
+    const subscription = await this.paymentsService.getCurrentUserSubscription(authUser.userId);
+    return new BaseResponseDto(subscription, 'Current subscription retrieved successfully');
   }
 
   @Get(':id')

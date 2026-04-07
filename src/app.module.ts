@@ -27,6 +27,7 @@ import { ContactModule } from './contact/contact.module';
 import { UserLocationModule } from './user-location/user-location.module';
 import { PollOptionsModule } from './poll-options/poll-options.module';
 import { SubscriptionPackageModule } from './subscription-package/subscription-package.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { SubscriptionPackageModule } from './subscription-package/subscription-p
     UserLocationModule,
     PollOptionsModule,
     SubscriptionPackageModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [
