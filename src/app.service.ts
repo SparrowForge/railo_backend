@@ -45,6 +45,8 @@ import { ChatReportCriteria } from './chat/entities/chat-report-criteria.entity'
 import { UserChattHide } from './chat/entities/user-chat-hide.entity';
 import { SubscriptionPackage } from './subscription-package/entities/subscription-package.entity';
 import { SubscriptionPackageBenefit } from './subscription-package/entities/subscription-package-benefit.entity';
+import { BoostPackage } from './boost-package/entities/boost-package.entity';
+import { BoostPackageBenefit } from './boost-package/entities/boost-package-benefit.entity';
 import { SubscriptionPayment } from './payments/entities/subscription-payment.entity';
 import { UserSubscription } from './payments/entities/user-subscription.entity';
 import { PaymentRecords } from './payments/entities/payments-record.entity';
@@ -108,6 +110,8 @@ export class AppService implements TypeOrmOptionsFactory {
         UserLocation,
         UserChattHide,
         PollOptions,
+        BoostPackage,
+        BoostPackageBenefit,
         SubscriptionPackage,
         SubscriptionPackageBenefit,
         SubscriptionPayment,
