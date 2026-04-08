@@ -66,7 +66,7 @@ export class NotificationRecordController {
   async unseenNotificationCount(@Query('userId') userId: string) {
     const result =
       await this.notificationService.unseenNotificationCount(userId);
-    return result;
+    return new BaseResponseDto(result);
   }
 
 
@@ -78,7 +78,7 @@ export class NotificationRecordController {
   })
   async getSummary() {
     const result = await this.notificationService.summary();
-    return result;
+    return new BaseResponseDto(result);
   }
 
 

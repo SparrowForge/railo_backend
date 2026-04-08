@@ -39,7 +39,7 @@ export class CreateBoostPackageDto {
   @ApiProperty({ description: 'Package duration', example: 0 })
   @Type(() => Number)
   @IsNumber()
-  duration: number;
+  boostQuantity: number;
 
   @ApiProperty({ description: 'Package type', example: 'popular/bestdeal' })
   @IsEnum(BoostPackageTypeEnum)

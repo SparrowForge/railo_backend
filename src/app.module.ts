@@ -27,6 +27,7 @@ import { ContactModule } from './contact/contact.module';
 import { UserLocationModule } from './user-location/user-location.module';
 import { PollOptionsModule } from './poll-options/poll-options.module';
 import { BoostPackageModule } from './boost-package/boost-package.module';
+import { BoostPaymentModule } from './boost-payment/boost-payment.module';
 import { SubscriptionPackageModule } from './subscription-package/subscription-package.module';
 import { PaymentsModule } from './payments/payments.module';
 
@@ -60,6 +61,7 @@ import { PaymentsModule } from './payments/payments.module';
     UserLocationModule,
     PollOptionsModule,
     BoostPackageModule,
+    BoostPaymentModule,
     SubscriptionPackageModule,
     PaymentsModule,
   ],

@@ -30,7 +30,7 @@ export class BoostPackage {
 
   @ApiProperty({ description: 'Package duration', example: 0 })
   @Column({ type: 'int', default: 0 })
-  duration: number;
+  boostQuantity: number;
 
   @ApiProperty({ description: 'Package type', example: 'popular/bestdeal' })
   @Column({ type: 'varchar', length: 100 })
