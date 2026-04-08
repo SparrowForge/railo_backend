@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SubscriptionPackage } from '../subscription-package/entities/subscription-package.entity';
 import { User } from '../users/entities/user.entity';
+import { PaymentRecords } from './entities/payments-record.entity';
 import { SubscriptionPayment } from './entities/subscription-payment.entity';
 import { UserSubscription } from './entities/user-subscription.entity';
 import { MyFatoorahService } from './myfatoorah.service';
@@ -12,6 +13,7 @@ import { PaymentsService } from './payments.service';
   imports: [
     TypeOrmModule.forFeature([
       SubscriptionPayment,
+      PaymentRecords,
       UserSubscription,
       SubscriptionPackage,
       User,
@@ -21,4 +23,4 @@ import { PaymentsService } from './payments.service';
   providers: [PaymentsService, MyFatoorahService],
   exports: [PaymentsService],
 })
-export class PaymentsModule {}
+export class PaymentsModule { }

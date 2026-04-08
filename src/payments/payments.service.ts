@@ -9,6 +9,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SubscriptionPackage } from '../subscription-package/entities/subscription-package.entity';
 import { User } from '../users/entities/user.entity';
+import { CreatePaymentRecordDto } from './dto/create-payment-record.dto';
+import { PaymentRecords } from './entities/payments-record.entity';
 import { SubscriptionPayment } from './entities/subscription-payment.entity';
 import { UserSubscription } from './entities/user-subscription.entity';
 import { SubscriptionPaymentStatus } from './enums/subscription-payment-status.enum';
@@ -23,6 +25,8 @@ export class PaymentsService {
   constructor(
     @InjectRepository(SubscriptionPayment)
     private readonly subscriptionPaymentRepository: Repository<SubscriptionPayment>,
+    @InjectRepository(PaymentRecords)
+    private readonly paymentRecordsRepository: Repository<PaymentRecords>,
     @InjectRepository(UserSubscription)
     private readonly userSubscriptionRepository: Repository<UserSubscription>,
     @InjectRepository(SubscriptionPackage)
@@ -30,7 +34,65 @@ export class PaymentsService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly myFatoorahService: MyFatoorahService,
-  ) {}
+  ) { }
+
+  async savePaymentRecord(
+    userId: string,
+    packageId: string,
+    dto: CreatePaymentRecordDto,
+  ) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const subscriptionPackage = await this.subscriptionPackageRepository.findOne({
+      where: { id: packageId },
+    });
+
+    if (!subscriptionPackage) {
+      throw new NotFoundException('Subscription package not found');
+    }
+
+    const paymentRecord = this.paymentRecordsRepository.create({
+      user_id: userId,
+      subscription_package_id: packageId,
+      IsSuccess: dto.IsSuccess ?? false,
+      Message: dto.Message ?? null,
+      ValidationErrors: dto.ValidationErrors ?? null,
+      InvoiceId: dto.InvoiceId ?? null,
+      InvoiceStatus: dto.InvoiceStatus ?? null,
+      InvoiceReference: dto.InvoiceReference ?? null,
+      CustomerReference: dto.CustomerReference ?? null,
+      CreatedDate: dto.CreatedDate
+        ? new Date(dto.CreatedDate)
+        : null,
+      ExpiryDate: this.normalizeDateOnly(dto.ExpiryDate),
+      ExpiryTime: dto.ExpiryTime ?? null,
+      InvoiceValue: dto.InvoiceValue ?? null,
+      Comments: dto.Comments ?? null,
+      CustomerName: dto.CustomerName ?? null,
+      CustomerMobile: dto.CustomerMobile ?? null,
+      CustomerEmail: dto.CustomerEmail ?? null,
+      UserDefinedField: dto.UserDefinedField ?? null,
+      InvoiceDisplayValue: dto.InvoiceDisplayValue ?? null,
+      DueDeposit: dto.DueDeposit ?? null,
+      DepositStatus: dto.DepositStatus ?? null,
+      InvoiceItems: dto.InvoiceItems ?? null,
+      InvoiceTransactions: dto.InvoiceTransactions ?? null,
+      Suppliers: dto.Suppliers ?? null,
+    });
+
+    const savedPaymentRecord = await this.paymentRecordsRepository.save(
+      paymentRecord,
+    );
+
+    await this.userRepository.update(userId, {
+      isSubscribedUser: true,
+    });
+
+    return savedPaymentRecord;
+  }
 
   async initiateSubscriptionPayment(
     userId: string,
@@ -185,6 +247,31 @@ export class PaymentsService {
     return {
       payment,
       subscription,
+    };
+  }
+
+  async getPaymentRecordInvoice(recordId: string, userId: string) {
+    const paymentRecord = await this.paymentRecordsRepository.findOne({
+      where: { id: recordId },
+      relations: ['subscription_package'],
+    });
+
+    if (!paymentRecord) {
+      throw new NotFoundException('Payment record not found');
+    }
+
+    if (paymentRecord.user_id !== userId) {
+      throw new ForbiddenException(
+        'You are not allowed to access this payment record',
+      );
+    }
+
+    const pdfBuffer = this.generatePaymentRecordInvoicePdf(paymentRecord);
+    const fileName = `invoice-${paymentRecord.InvoiceId || paymentRecord.id}.pdf`;
+
+    return {
+      fileName,
+      buffer: pdfBuffer,
     };
   }
 
@@ -515,5 +602,119 @@ export class PaymentsService {
     }
 
     return null;
+  }
+
+  private normalizeDateOnly(value?: string | null) {
+    if (!value) {
+      return null;
+    }
+
+    const parsedDate = new Date(value);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return value;
+    }
+
+    return parsedDate.toISOString().slice(0, 10);
+  }
+
+  private generatePaymentRecordInvoicePdf(paymentRecord: PaymentRecords) {
+    const lines = [
+      'Rillo Payment Invoice',
+      '',
+      `Invoice ID: ${paymentRecord.InvoiceId || 'N/A'}`,
+      `Invoice Status: ${paymentRecord.InvoiceStatus || 'N/A'}`,
+      `Invoice Reference: ${paymentRecord.InvoiceReference || 'N/A'}`,
+      `Customer Name: ${paymentRecord.CustomerName || 'N/A'}`,
+      `Customer Mobile: ${paymentRecord.CustomerMobile || 'N/A'}`,
+      `Customer Email: ${paymentRecord.CustomerEmail || 'N/A'}`,
+      `Package ID: ${paymentRecord.subscription_package_id}`,
+      `Amount: ${paymentRecord.InvoiceDisplayValue || paymentRecord.InvoiceValue || 'N/A'}`,
+      `Due Deposit: ${paymentRecord.DueDeposit ?? 'N/A'}`,
+      `Deposit Status: ${paymentRecord.DepositStatus || 'N/A'}`,
+      `Created Date: ${this.formatDateTime(paymentRecord.CreatedDate)}`,
+      `Expiry Date: ${paymentRecord.ExpiryDate || 'N/A'}`,
+      `Expiry Time: ${paymentRecord.ExpiryTime || 'N/A'}`,
+      '',
+      'Transactions',
+      ...(paymentRecord.InvoiceTransactions?.length
+        ? paymentRecord.InvoiceTransactions.flatMap((transaction, index) => [
+            `Transaction ${index + 1}:`,
+            `  Payment Gateway: ${this.readString(transaction, 'PaymentGateway') || 'N/A'}`,
+            `  Transaction ID: ${this.readString(transaction, 'TransactionId') || 'N/A'}`,
+            `  Payment ID: ${this.readString(transaction, 'PaymentId') || 'N/A'}`,
+            `  Track ID: ${this.readString(transaction, 'TrackId') || 'N/A'}`,
+            `  Reference ID: ${this.readString(transaction, 'ReferenceId') || 'N/A'}`,
+            `  Status: ${this.readString(transaction, 'TransactionStatus') || 'N/A'}`,
+            `  Date: ${this.readString(transaction, 'TransactionDate') || 'N/A'}`,
+            `  Currency: ${this.readString(transaction, 'Currency') || 'N/A'}`,
+            `  Country: ${this.readString(transaction, 'Country') || 'N/A'}`,
+            '',
+          ])
+        : ['No transactions found']),
+    ];
+
+    return this.buildSimplePdf(lines);
+  }
+
+  private formatDateTime(value?: Date | null) {
+    if (!value) {
+      return 'N/A';
+    }
+
+    return value.toISOString();
+  }
+
+  private buildSimplePdf(lines: string[]) {
+    const sanitizedLines = lines.map((line) => this.escapePdfText(line));
+    const contentLines = ['BT', '/F1 12 Tf', '50 780 Td', '14 TL'];
+
+    sanitizedLines.forEach((line, index) => {
+      if (index === 0) {
+        contentLines.push(`(${line}) Tj`);
+        return;
+      }
+
+      contentLines.push('T*');
+      contentLines.push(`(${line}) Tj`);
+    });
+
+    contentLines.push('ET');
+
+    const contentStream = contentLines.join('\n');
+    const objects = [
+      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj',
+      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj',
+      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj',
+      '4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj',
+      `5 0 obj\n<< /Length ${Buffer.byteLength(contentStream, 'utf8')} >>\nstream\n${contentStream}\nendstream\nendobj`,
+    ];
+
+    let pdf = '%PDF-1.4\n';
+    const offsets: number[] = [0];
+
+    objects.forEach((object) => {
+      offsets.push(Buffer.byteLength(pdf, 'utf8'));
+      pdf += `${object}\n`;
+    });
+
+    const xrefOffset = Buffer.byteLength(pdf, 'utf8');
+    pdf += `xref\n0 ${objects.length + 1}\n`;
+    pdf += '0000000000 65535 f \n';
+
+    for (let index = 1; index < offsets.length; index += 1) {
+      pdf += `${offsets[index].toString().padStart(10, '0')} 00000 n \n`;
+    }
+
+    pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\n`;
+    pdf += `startxref\n${xrefOffset}\n%%EOF`;
+
+    return Buffer.from(pdf, 'utf8');
+  }
+
+  private escapePdfText(value: string) {
+    return value
+      .replace(/\\/g, '\\\\')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)');
   }
 }

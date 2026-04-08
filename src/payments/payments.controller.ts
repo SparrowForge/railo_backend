@@ -6,6 +6,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Res,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -17,6 +18,8 @@ import { BaseResponseDto } from '../common/dto/base-response.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import type AuthUser from '../auth/dto/auth-user';
+import type { Response } from 'express';
+import { CreatePaymentRecordDto } from './dto/create-payment-record.dto';
 import { InitiateSubscriptionPaymentDto } from './dto/initiate-subscription-payment.dto';
 import { PaymentsService } from './payments.service';
 import { MyFatoorahWebhookDto } from './dto/myfatoorah-webhook.dto';
@@ -26,6 +29,45 @@ import { MyFatoorahWebhookDto } from './dto/myfatoorah-webhook.dto';
 @Controller('api/v1/payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) { }
+
+  @Post('subscription-package/:packageId/records')
+  @ApiOperation({ summary: 'Save a payment record for the current user' })
+  @ApiResponse({ status: 201, description: 'Payment record saved successfully' })
+  async savePaymentRecord(
+    @CurrentUser() authUser: AuthUser,
+    @Param('packageId', new ParseUUIDPipe()) packageId: string,
+    @Body() dto: CreatePaymentRecordDto,
+  ) {
+    const result = await this.paymentsService.savePaymentRecord(
+      authUser.userId,
+      packageId,
+      dto,
+    );
+
+    return new BaseResponseDto(result, 'Payment record saved successfully');
+  }
+
+  @Get('records/:recordId/invoice')
+  @ApiOperation({ summary: 'Download invoice PDF for a payment record' })
+  @ApiResponse({ status: 200, description: 'Invoice PDF downloaded successfully' })
+  async downloadPaymentRecordInvoice(
+    @CurrentUser() authUser: AuthUser,
+    @Param('recordId', new ParseUUIDPipe()) recordId: string,
+    @Res() res: Response,
+  ) {
+    const invoice = await this.paymentsService.getPaymentRecordInvoice(
+      recordId,
+      authUser.userId,
+    );
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${invoice.fileName}"`,
+    );
+
+    res.send(invoice.buffer);
+  }
 
   @Post('subscription-package/:packageId/initiate')
   @ApiOperation({ summary: 'Initiate a subscription package payment' })

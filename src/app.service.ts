@@ -47,6 +47,7 @@ import { SubscriptionPackage } from './subscription-package/entities/subscriptio
 import { SubscriptionPackageBenefit } from './subscription-package/entities/subscription-package-benefit.entity';
 import { SubscriptionPayment } from './payments/entities/subscription-payment.entity';
 import { UserSubscription } from './payments/entities/user-subscription.entity';
+import { PaymentRecords } from './payments/entities/payments-record.entity';
 
 @Injectable()
 
@@ -83,6 +84,7 @@ export class AppService implements TypeOrmOptionsFactory {
         ConversationRead,
         ConversationClear,
         Follow,
+        PaymentRecords,
         Posts,
         PostLike,
         PostView,
