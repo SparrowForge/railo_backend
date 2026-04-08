@@ -5,11 +5,13 @@ import {
   IsArray,
   IsBoolean,
   IsEmail,
+  IsInt,
   IsNumber,
   IsObject,
   IsOptional,
   IsString,
   IsUUID,
+  Min,
   MaxLength,
 } from 'class-validator';
 
@@ -22,7 +24,17 @@ export class CreateBoostPaymentRecordDto {
   @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()
-  IsSuccess?: boolean;
+  IsSuccess?: boolean = true;
+
+  @ApiPropertyOptional({
+    example: 6,
+    description:
+      'How many boosts from the purchased package should be activated immediately for this post',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  boostQuantityToUseNow?: number;
 
   @ApiPropertyOptional({ example: '' })
   @IsOptional()

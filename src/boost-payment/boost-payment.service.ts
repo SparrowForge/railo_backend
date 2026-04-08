@@ -1,10 +1,17 @@
-import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, LessThanOrEqual, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, LessThanOrEqual, Repository } from 'typeorm';
 import { BoostPackage } from '../boost-package/entities/boost-package.entity';
 import { Posts } from '../post/entities/post.entity';
 import { User } from '../users/entities/user.entity';
+import { ApplyBoostBalanceDto } from './dto/apply-boost-balance.dto';
 import { CreateBoostPaymentRecordDto } from './dto/create-boost-payment-record.dto';
 import { BoostPaymentRecord } from './entities/boost-payment-record.entity';
 import { PostBoost } from './entities/post-boost.entity';
@@ -57,12 +64,35 @@ export class BoostPaymentService {
         throw new NotFoundException('Post not found');
       }
 
+      if (post.userId !== userId) {
+        throw new ForbiddenException('You can only boost your own post');
+      }
+
+      const purchasedQuantity = Math.max(boostPackage.boostQuantity, 0);
+      const boostQuantityToUseNow =
+        dto.boostQuantityToUseNow ?? purchasedQuantity;
+
+      if (boostQuantityToUseNow < 0 || boostQuantityToUseNow > purchasedQuantity) {
+        throw new BadRequestException(
+          `boostQuantityToUseNow must be between 0 and ${purchasedQuantity}`,
+        );
+      }
+
+      const isSuccessfulPayment = dto.IsSuccess ?? false;
+      const usedQuantity = isSuccessfulPayment ? boostQuantityToUseNow : 0;
+      const remainingQuantity = isSuccessfulPayment
+        ? purchasedQuantity - boostQuantityToUseNow
+        : 0;
+
       const paymentRecord = await manager.getRepository(BoostPaymentRecord).save(
         manager.getRepository(BoostPaymentRecord).create({
           user_id: userId,
           boost_package_id: packageId,
           post_id: dto.postId,
-          IsSuccess: dto.IsSuccess ?? false,
+          purchased_quantity: purchasedQuantity,
+          used_quantity: usedQuantity,
+          remaining_quantity: remainingQuantity,
+          IsSuccess: isSuccessfulPayment,
           Message: dto.Message ?? null,
           ValidationErrors: dto.ValidationErrors ?? null,
           InvoiceId: dto.InvoiceId ?? null,
@@ -93,40 +123,97 @@ export class BoostPaymentService {
         Boolean(boostEndAt && boostEndAt > new Date());
       let postBoost: PostBoost | null = null;
 
-      // if (paymentRecord.IsSuccess) {
-      const minutesAdded = this.getPurchasedMinutes(boostPackage.boostQuantity);
-      const startsAt = await this.resolveNextBoostStartAt(dto.postId, manager);
-      const endsAt = this.addMinutes(startsAt, minutesAdded);
+      if (paymentRecord.IsSuccess && boostQuantityToUseNow > 0) {
+        postBoost = await this.createPostBoost(
+          manager,
+          userId,
+          dto.postId,
+          packageId,
+          paymentRecord.id,
+          boostQuantityToUseNow,
+        );
 
-      postBoost = await manager.getRepository(PostBoost).save(
-        manager.getRepository(PostBoost).create({
-          user_id: userId,
-          post_id: dto.postId,
-          boost_package_id: packageId,
-          boost_payment_record_id: paymentRecord.id,
-          purchased_quantity: boostPackage.boostQuantity,
-          purchased_minutes: minutesAdded,
-          starts_at: startsAt,
-          ends_at: endsAt,
-          status: PostBoostStatus.active,
-        }),
-      );
-      console.log('postBoost:', postBoost);
-
-
-      const cache = await this.refreshPostBoostCache(dto.postId, manager);
-      boostEndAt = cache.boostEndAt;
-      isBoostRunning = cache.isBoostRunning;
-      // }
+        const cache = await this.refreshPostBoostCache(dto.postId, manager);
+        boostEndAt = cache.boostEndAt;
+        isBoostRunning = cache.isBoostRunning;
+      }
 
       return {
         paymentRecord,
         postBoost,
         paymentRecordId: paymentRecord.id,
         postId: dto.postId,
-        minutesAdded: postBoost?.purchased_minutes ?? 0,
+        usedQuantity,
+        remainingQuantity,
+        minutesAdded: postBoost?.boost_minutes ?? 0,
         boostEndAt,
         isBoostRunning,
+      };
+    });
+  }
+
+  async applyRemainingBoost(
+    userId: string,
+    recordId: string,
+    dto: ApplyBoostBalanceDto,
+  ) {
+    return this.dataSource.transaction(async (manager) => {
+      const paymentRecord = await manager.getRepository(BoostPaymentRecord).findOne({
+        where: { id: recordId, user_id: userId },
+      });
+
+      if (!paymentRecord) {
+        throw new NotFoundException('Boost payment record not found');
+      }
+
+      if (!paymentRecord.IsSuccess) {
+        throw new BadRequestException(
+          'Remaining boosts can only be used from a successful payment',
+        );
+      }
+
+      if (paymentRecord.remaining_quantity < dto.boostQuantity) {
+        throw new BadRequestException(
+          `Only ${paymentRecord.remaining_quantity} boosts are remaining in this purchase`,
+        );
+      }
+
+      const post = await manager.getRepository(Posts).findOne({
+        where: { id: dto.postId },
+      });
+
+      if (!post) {
+        throw new NotFoundException('Post not found');
+      }
+
+      if (post.userId !== userId) {
+        throw new ForbiddenException('You can only boost your own post');
+      }
+
+      const postBoost = await this.createPostBoost(
+        manager,
+        userId,
+        dto.postId,
+        paymentRecord.boost_package_id,
+        paymentRecord.id,
+        dto.boostQuantity,
+      );
+
+      paymentRecord.used_quantity += dto.boostQuantity;
+      paymentRecord.remaining_quantity -= dto.boostQuantity;
+      await manager.getRepository(BoostPaymentRecord).save(paymentRecord);
+
+      const cache = await this.refreshPostBoostCache(dto.postId, manager);
+
+      return {
+        paymentRecord,
+        postBoost,
+        postId: dto.postId,
+        usedQuantity: paymentRecord.used_quantity,
+        remainingQuantity: paymentRecord.remaining_quantity,
+        minutesAdded: postBoost.boost_minutes,
+        boostEndAt: cache.boostEndAt,
+        isBoostRunning: cache.isBoostRunning,
       };
     });
   }
@@ -176,6 +263,33 @@ export class BoostPaymentService {
 
   private getPurchasedMinutes(boostQuantity: number) {
     return Math.max(boostQuantity, 0) * 10;
+  }
+
+  private async createPostBoost(
+    manager: EntityManager,
+    userId: string,
+    postId: string,
+    packageId: string,
+    paymentRecordId: string,
+    boostQuantity: number,
+  ) {
+    const minutesAdded = this.getPurchasedMinutes(boostQuantity);
+    const startsAt = await this.resolveNextBoostStartAt(postId, manager);
+    const endsAt = this.addMinutes(startsAt, minutesAdded);
+
+    return manager.getRepository(PostBoost).save(
+      manager.getRepository(PostBoost).create({
+        user_id: userId,
+        post_id: postId,
+        boost_package_id: packageId,
+        boost_payment_record_id: paymentRecordId,
+        boost_quantity: boostQuantity,
+        boost_minutes: minutesAdded,
+        starts_at: startsAt,
+        ends_at: endsAt,
+        status: PostBoostStatus.active,
+      }),
+    );
   }
 
   private addMinutes(date: Date, minutes: number) {
@@ -264,6 +378,9 @@ export class BoostPaymentService {
       `Customer Email: ${paymentRecord.CustomerEmail || 'N/A'}`,
       `Boost Package ID: ${paymentRecord.boost_package_id}`,
       `Post ID: ${paymentRecord.post_id}`,
+      `Purchased Boost Quantity: ${paymentRecord.purchased_quantity}`,
+      `Used Boost Quantity: ${paymentRecord.used_quantity}`,
+      `Remaining Boost Quantity: ${paymentRecord.remaining_quantity}`,
       `Amount: ${paymentRecord.InvoiceDisplayValue || paymentRecord.InvoiceValue || 'N/A'}`,
       `Due Deposit: ${paymentRecord.DueDeposit ?? 'N/A'}`,
       `Deposit Status: ${paymentRecord.DepositStatus || 'N/A'}`,

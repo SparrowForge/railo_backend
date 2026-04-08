@@ -38,11 +38,11 @@ export class PostBoost {
 
   @ApiProperty()
   @Column({ type: 'int', default: 0 })
-  purchased_quantity: number;
+  boost_quantity: number;
 
   @ApiProperty()
   @Column({ type: 'int', default: 0 })
-  purchased_minutes: number;
+  boost_minutes: number;
 
   @ApiProperty()
   @Column({ type: 'timestamp' })

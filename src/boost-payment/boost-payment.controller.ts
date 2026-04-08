@@ -17,6 +17,7 @@ import type AuthUser from '../auth/dto/auth-user';
 import type { Response } from 'express';
 import { BaseResponseDto } from '../common/dto/base-response.dto';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { ApplyBoostBalanceDto } from './dto/apply-boost-balance.dto';
 import { CreateBoostPaymentRecordDto } from './dto/create-boost-payment-record.dto';
 import { BoostPaymentService } from './boost-payment.service';
 
@@ -65,5 +66,22 @@ export class BoostPaymentController {
     );
 
     return new BaseResponseDto(result, 'Boost payment record saved successfully');
+  }
+
+  @Post('records/:recordId/use')
+  @ApiOperation({ summary: 'Use remaining purchased boosts for a post' })
+  @ApiResponse({ status: 201, description: 'Remaining boosts applied successfully' })
+  async applyRemainingBoost(
+    @CurrentUser() authUser: AuthUser,
+    @Param('recordId', new ParseUUIDPipe()) recordId: string,
+    @Body() dto: ApplyBoostBalanceDto,
+  ) {
+    const result = await this.boostPaymentService.applyRemainingBoost(
+      authUser.userId,
+      recordId,
+      dto,
+    );
+
+    return new BaseResponseDto(result, 'Remaining boosts applied successfully');
   }
 }

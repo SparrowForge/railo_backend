@@ -30,6 +30,18 @@ export class BoostPaymentRecord {
   @Column({ type: 'uuid' })
   post_id: string;
 
+  @ApiProperty()
+  @Column({ type: 'int', default: 0 })
+  purchased_quantity: number;
+
+  @ApiProperty()
+  @Column({ type: 'int', default: 0 })
+  used_quantity: number;
+
+  @ApiProperty()
+  @Column({ type: 'int', default: 0 })
+  remaining_quantity: number;
+
   @ApiProperty({ required: false })
   @Column({ name: 'is_success', type: 'boolean', default: false })
   IsSuccess: boolean;
