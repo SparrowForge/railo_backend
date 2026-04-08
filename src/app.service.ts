@@ -48,6 +48,7 @@ import { SubscriptionPackageBenefit } from './subscription-package/entities/subs
 import { BoostPackage } from './boost-package/entities/boost-package.entity';
 import { BoostPackageBenefit } from './boost-package/entities/boost-package-benefit.entity';
 import { BoostPaymentRecord } from './boost-payment/entities/boost-payment-record.entity';
+import { PostBoost } from './boost-payment/entities/post-boost.entity';
 import { SubscriptionPayment } from './payments/entities/subscription-payment.entity';
 import { UserSubscription } from './payments/entities/user-subscription.entity';
 import { PaymentRecords } from './payments/entities/payments-record.entity';
@@ -114,6 +115,7 @@ export class AppService implements TypeOrmOptionsFactory {
         BoostPackage,
         BoostPackageBenefit,
         BoostPaymentRecord,
+        PostBoost,
         SubscriptionPackage,
         SubscriptionPackageBenefit,
         SubscriptionPayment,

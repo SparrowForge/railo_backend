@@ -16,6 +16,7 @@ import {
 export class CreateBoostPaymentRecordDto {
   @ApiProperty({ example: '5db0af88-91bf-4a69-b998-0f2a7130f692' })
   @IsUUID()
+  @IsOptional()
   postId: string;
 
   @ApiPropertyOptional({ example: true })

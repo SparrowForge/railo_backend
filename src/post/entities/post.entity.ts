@@ -61,6 +61,12 @@ export class Posts {
     @Column({ default: false })
     isPollComplete: boolean;
 
+    @Column({ default: false })
+    isBoostRunning: boolean;
+
+    @Column({ type: 'timestamp', nullable: true })
+    boostEndAt: Date | null;
+
     @CreateDateColumn()
     createdAt: Date;
 
