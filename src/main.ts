@@ -9,6 +9,7 @@ import { SwaggerTheme, SwaggerThemeNameEnum } from 'swagger-themes';
 import { AppModule } from './app.module';
 import { JwtAuthOrPublicGuard } from './common/guards/jwt-auth-or-public.guard';
 import * as express from 'express';
+import { SocketIoRedisAdapter } from './socket-io-redis.adapter';
 
 async function bootstrap() {
   console.log('🚀 Starting Rillo API server...');
@@ -45,6 +46,12 @@ async function bootstrap() {
     },
   });
 
+  // //==Redis Socket Config===================================================
+  // const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+  // const redisIoAdapter = new SocketIoRedisAdapter(app);
+  // await redisIoAdapter.connectToRedis(redisUrl);
+  // app.useWebSocketAdapter(redisIoAdapter);
+  // //==end: Redis Socket Config===================================================
 
   const config = new DocumentBuilder()
     .setTitle('Rillo API')
@@ -78,5 +85,15 @@ async function bootstrap() {
 
   console.log('App listining to port:', process.env.PORT ?? 3000);
   await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
+
+
+  // const shutdown = async () => {
+  //   await redisIoAdapter.closeRedisConnections();
+  //   await app.close();
+  // };
+
+  // process.on('SIGINT', shutdown);
+  // process.on('SIGTERM', shutdown);
+
 }
 void bootstrap();
