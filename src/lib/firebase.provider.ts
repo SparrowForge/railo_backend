@@ -11,7 +11,14 @@ export const FirebaseProvider: Provider = {
         if (!projectId || !clientEmail || !privateKey) {
             throw new Error('Missing Firebase environment variables');
         }
-        privateKey = privateKey.replace(/\\n/g, '\n').replace(/\r/g, '').trim();
+        // privateKey = privateKey.replace(/\\n/g, '\n').replace(/\r/g, '').trim();
+        privateKey = privateKey
+            .replace(/^["']|["']$/g, '')
+            .replace(/\\\\n/g, '\n')
+            .replace(/\\n/g, '\n')
+            .replace(/\\\r?\n/g, '\n')
+            .replace(/\r/g, '')
+            .trim();
 
         if (!privateKey.startsWith('-----BEGIN PRIVATE KEY-----')) {
             throw new Error('Firebase private key does not start correctly');
