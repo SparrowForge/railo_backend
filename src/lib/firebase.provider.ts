@@ -28,7 +28,7 @@ export const FirebaseProvider: Provider = {
             throw new Error('Firebase private key does not end correctly');
         }
 
-        console.log(privateKey)
+        // console.log(privateKey)
 
         if (!admin.apps.length) {
             admin.initializeApp({
