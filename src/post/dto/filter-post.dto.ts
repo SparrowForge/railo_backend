@@ -6,6 +6,7 @@ import { PostVisibilityEnum } from 'src/common/enums/post-visibility.enum';
 import { UserInteractionEnum } from './user-interaction-type.enum';
 import { Transform } from 'class-transformer';
 import { FilterCommentsEnum } from './filter-comments.enum';
+import { PostModeEnum } from './post-mode.enum';
 
 export class FilterPostDto extends PaginationDto {
   @ApiProperty({ description: 'User Guid Id', example: 'xxxx-xxxx-xxxx-xxxx', required: true })
@@ -50,4 +51,8 @@ export class FilterPostDto extends PaginationDto {
   @IsOptional()
   @IsEnum(FilterCommentsEnum)
   filterComments?: FilterCommentsEnum;
+
+  @IsOptional()
+  @IsEnum(PostModeEnum)
+  postMode?: PostModeEnum;
 }
