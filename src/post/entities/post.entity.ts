@@ -58,6 +58,18 @@ export class Posts {
     @Column({ type: 'double precision', nullable: true })
     longitude: number;
 
+    @Column({ nullable: true })
+    area: string;
+
+    @Column({ nullable: true })
+    city: string;
+
+    @Column({ nullable: true })
+    state: string;
+
+    @Column({ nullable: true })
+    country: string;
+
     @Column({ default: false })
     isPollComplete: boolean;
 

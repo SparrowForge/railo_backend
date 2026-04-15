@@ -34,6 +34,7 @@ import { PostHide } from './entities/post-hide.entity';
 import { PostNotification } from './entities/post-notification.entity';
 import { UserPosttHide } from './entities/user-post-hide.entity';
 import { PostPollVote } from './entities/post-poll-vote.entity';
+import { PostModeEnum } from './dto/post-mode.enum';
 
 @Injectable()
 export class PostService {
@@ -151,6 +152,10 @@ export class PostService {
             location: (currentUserLocation?.location as unknown as Posts['location']) ?? undefined,
             latitude: currentUserLocation?.latitude ?? undefined,
             longitude: currentUserLocation?.longitude ?? undefined,
+            area: currentUserLocation?.area ?? undefined,
+            city: currentUserLocation?.city ?? undefined,
+            state: currentUserLocation?.state ?? undefined,
+            country: currentUserLocation?.country ?? undefined,
             linkUrl: dto.linkUrl,
         };
         const post = this.postRepo.create(postData);
@@ -508,6 +513,11 @@ export class PostService {
                     visibility: PostVisibilityEnum.GHOST
                 });
             }
+        }
+        if (filters?.postMode == PostModeEnum.Explored) {
+            queryBuilder.andWhere('post.country = "userLocation"."country"');
+            queryBuilder.orderBy('post.likeCount', 'DESC');
+            console.log('i am called')
         }
 
         if (currentUserLocation) {
