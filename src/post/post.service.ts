@@ -515,9 +515,13 @@ export class PostService {
             }
         }
         if (filters?.postMode == PostModeEnum.Explored) {
+            const exploredCutoffDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
             queryBuilder.andWhere('post.country = "userLocation"."country"');
+            queryBuilder.andWhere('post.createdAt >= :exploredCutoffDate', {
+                exploredCutoffDate,
+            });
             queryBuilder.orderBy('post.likeCount', 'DESC');
-            console.log('i am called')
         }
 
         if (currentUserLocation) {
