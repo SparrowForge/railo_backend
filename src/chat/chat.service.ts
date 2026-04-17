@@ -331,7 +331,7 @@ export class ChatService {
                 .innerJoin(
                     ChatRequest,
                     'cr',
-                    'cr.conversation_id = c.id AND cr.status = :request_status',
+                    'cr.conversation_id = c.id AND cr.status = :request_status AND cr.receiver_id = :user_id',
                     { request_status: chat_request_status.pending },
                 )
                 .where('c.type = :type', { type: conversation_type.direct })
@@ -372,8 +372,10 @@ export class ChatService {
                 'cp.conversation_id = c.id AND cp.user_id = :user_id',
                 { user_id: filters.userId },
             )
-            .where('c.is_active = :is_active', { is_active: true })
+            // .where('c.is_active = :is_active', { is_active: true })
             .orderBy('c.updated_at', 'DESC');
+
+
 
         if (filters?.search) {
             conversationsQb.andWhere(
@@ -386,7 +388,16 @@ export class ChatService {
             );
         }
 
-        const conversations = await conversationsQb.getMany();
+        let conversations = await conversationsQb.getMany();
+        conversations = conversations.filter((conversation) => {
+            if (conversation.type === conversation_type.group || (conversation.user_one_id == filters.userId)) {
+                return true;
+            } else if (conversation.user_two_id == filters.userId && conversation.is_active === true) {
+                return true;
+            }
+            return false;
+        }
+        );
 
         const items = await Promise.all(
             conversations.map(async (conversation) => {
