@@ -88,7 +88,7 @@ export class PaymentsService {
     );
 
     await this.userRepository.update(userId, {
-      isSubscribedUser: true,
+      is_subscribed_user: true,
     });
 
     return savedPaymentRecord;
@@ -420,7 +420,7 @@ export class PaymentsService {
     });
 
     await this.userRepository.update(userId, {
-      isSubscribedUser: Boolean(activeSubscription),
+      is_subscribed_user: Boolean(activeSubscription),
     });
   }
 
@@ -436,7 +436,7 @@ export class PaymentsService {
 
     if (expiredSubscriptions.affected) {
       await this.userRepository.update(userId, {
-        isSubscribedUser: false,
+        is_subscribed_user: false,
       });
     }
   }
@@ -638,18 +638,18 @@ export class PaymentsService {
       'Transactions',
       ...(paymentRecord.InvoiceTransactions?.length
         ? paymentRecord.InvoiceTransactions.flatMap((transaction, index) => [
-            `Transaction ${index + 1}:`,
-            `  Payment Gateway: ${this.readString(transaction, 'PaymentGateway') || 'N/A'}`,
-            `  Transaction ID: ${this.readString(transaction, 'TransactionId') || 'N/A'}`,
-            `  Payment ID: ${this.readString(transaction, 'PaymentId') || 'N/A'}`,
-            `  Track ID: ${this.readString(transaction, 'TrackId') || 'N/A'}`,
-            `  Reference ID: ${this.readString(transaction, 'ReferenceId') || 'N/A'}`,
-            `  Status: ${this.readString(transaction, 'TransactionStatus') || 'N/A'}`,
-            `  Date: ${this.readString(transaction, 'TransactionDate') || 'N/A'}`,
-            `  Currency: ${this.readString(transaction, 'Currency') || 'N/A'}`,
-            `  Country: ${this.readString(transaction, 'Country') || 'N/A'}`,
-            '',
-          ])
+          `Transaction ${index + 1}:`,
+          `  Payment Gateway: ${this.readString(transaction, 'PaymentGateway') || 'N/A'}`,
+          `  Transaction ID: ${this.readString(transaction, 'TransactionId') || 'N/A'}`,
+          `  Payment ID: ${this.readString(transaction, 'PaymentId') || 'N/A'}`,
+          `  Track ID: ${this.readString(transaction, 'TrackId') || 'N/A'}`,
+          `  Reference ID: ${this.readString(transaction, 'ReferenceId') || 'N/A'}`,
+          `  Status: ${this.readString(transaction, 'TransactionStatus') || 'N/A'}`,
+          `  Date: ${this.readString(transaction, 'TransactionDate') || 'N/A'}`,
+          `  Currency: ${this.readString(transaction, 'Currency') || 'N/A'}`,
+          `  Country: ${this.readString(transaction, 'Country') || 'N/A'}`,
+          '',
+        ])
         : ['No transactions found']),
     ];
 

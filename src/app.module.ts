@@ -30,6 +30,7 @@ import { BoostPackageModule } from './boost-package/boost-package.module';
 import { BoostPaymentModule } from './boost-payment/boost-payment.module';
 import { SubscriptionPackageModule } from './subscription-package/subscription-package.module';
 import { PaymentsModule } from './payments/payments.module';
+import { ModerationModule } from './moderation/moderation.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { PaymentsModule } from './payments/payments.module';
     BoostPaymentModule,
     SubscriptionPackageModule,
     PaymentsModule,
+    ModerationModule,
   ],
   controllers: [AppController],
   providers: [

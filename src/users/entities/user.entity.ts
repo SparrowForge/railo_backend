@@ -117,6 +117,10 @@ export class User {
   @Column({ type: 'boolean', default: false, nullable: true })
   isSubscribedUser: boolean;
 
+  @ApiProperty()
+  @Column({ type: 'boolean', default: false, nullable: true })
+  is_moderation_user: boolean;
+
   //-----------------------------------------------
 
   /*Relations */
