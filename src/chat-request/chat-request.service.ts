@@ -182,6 +182,7 @@ export class ChatRequestService {
 
         if (conversation) {
             conversation.is_active = status === chat_request_status.accepted ? true : false;
+            conversation.is_chat_request_accepted = status === chat_request_status.accepted ? true : false;
             conversation = await this.conversationRepo.save(conversation);
         } else {
             throw new BadRequestException('Conversation not found');
