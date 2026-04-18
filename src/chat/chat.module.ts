@@ -20,6 +20,7 @@ import { ChatReport } from './entities/chat-report.entity';
 import { ChatReportCriteria } from './entities/chat-report-criteria.entity';
 import { UserChattHide } from './entities/user-chat-hide.entity';
 import { ConversationPin } from './entities/conversation-pin.entity';
+import { ModerationModule } from 'src/moderation/moderation.module';
 
 @Module({
   imports: [
@@ -38,7 +39,8 @@ import { ConversationPin } from './entities/conversation-pin.entity';
       ConversationPin,
     ]),
     AuthModule,
-    NotificationsModule
+    NotificationsModule,
+    ModerationModule
   ],
   providers: [
     ChatGateway,

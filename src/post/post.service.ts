@@ -35,6 +35,7 @@ import { PostNotification } from './entities/post-notification.entity';
 import { UserPosttHide } from './entities/user-post-hide.entity';
 import { PostPollVote } from './entities/post-poll-vote.entity';
 import { PostModeEnum } from './dto/post-mode.enum';
+import { ModerationService } from 'src/moderation/moderation.service';
 
 @Injectable()
 export class PostService {
@@ -83,6 +84,7 @@ export class PostService {
         private readonly userHideRepo: Repository<UserPosttHide>,
 
         private readonly notificationService: NotificationService,
+        private readonly moderationService: ModerationService,
     ) { }
 
     private formatDateKey(date: Date): string {
@@ -1305,7 +1307,7 @@ export class PostService {
 
         const uniqueCriteria = [...new Set(dto.criteria)];
 
-        return await this.dataSource.transaction(async (manager) => {
+        const result = await this.dataSource.transaction(async (manager) => {
             const reportRepo = manager.getRepository(PostReport);
             const reportCriteriaRepo = manager.getRepository(PostReportCriteria);
 
@@ -1339,6 +1341,10 @@ export class PostService {
                 criteria: uniqueCriteria,
             };
         });
+
+        await this.moderationService.recordPostReport(postId);
+
+        return result;
     }
 
     async hidePost(postId: string, userId: string) {

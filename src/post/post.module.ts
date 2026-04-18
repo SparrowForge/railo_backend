@@ -16,9 +16,10 @@ import { PostHide } from './entities/post-hide.entity';
 import { PostNotification } from './entities/post-notification.entity';
 import { UserPosttHide } from './entities/user-post-hide.entity';
 import { PostPollVote } from './entities/post-poll-vote.entity';
+import { ModerationModule } from 'src/moderation/moderation.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Posts, PostLike, PostPin, PostView, UserLocation, PostPollOption, PostPollVote, PostFile, PostReport, PostReportCriteria, PostHide, PostNotification, UserPosttHide]), NotificationsModule],
+  imports: [TypeOrmModule.forFeature([Posts, PostLike, PostPin, PostView, UserLocation, PostPollOption, PostPollVote, PostFile, PostReport, PostReportCriteria, PostHide, PostNotification, UserPosttHide]), NotificationsModule, ModerationModule],
   providers: [PostService],
   controllers: [PostController]
 })

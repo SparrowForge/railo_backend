@@ -38,6 +38,18 @@ export class Conversation {
     @Column({ default: false })
     is_chat_request_accepted: boolean;
 
+    @Column({ type: 'boolean', default: false })
+    is_moderation_locked: boolean;
+
+    @Column({ type: 'uuid', nullable: true })
+    moderation_locked_by: string | null;
+
+    @Column({ type: 'timestamp', nullable: true })
+    moderation_locked_at: Date | null;
+
+    @Column({ type: 'text', nullable: true })
+    moderation_lock_reason: string | null;
+
     @CreateDateColumn()
     created_at: Date;
 

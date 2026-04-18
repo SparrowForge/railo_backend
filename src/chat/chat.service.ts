@@ -33,6 +33,7 @@ import { ChatReport } from './entities/chat-report.entity';
 import { ChatReportCriteria } from './entities/chat-report-criteria.entity';
 import { UserChattHide } from './entities/user-chat-hide.entity';
 import { ConversationPin } from './entities/conversation-pin.entity';
+import { ModerationService } from 'src/moderation/moderation.service';
 
 @Injectable()
 export class ChatService {
@@ -72,6 +73,7 @@ export class ChatService {
         private readonly jwtService: JwtService,
 
         private readonly userPresenceService: UserPresenceService,
+        private readonly moderationService: ModerationService,
     ) { }
 
     async send_message(dto: SendMessageDto, user_id: string) {
@@ -245,7 +247,7 @@ export class ChatService {
 
         const uniqueCriteria = [...new Set(dto.criteria)];
 
-        return await this.dataSource.transaction(async (manager) => {
+        const result = await this.dataSource.transaction(async (manager) => {
             const reportRepo = manager.getRepository(ChatReport);
             const reportCriteriaRepo = manager.getRepository(ChatReportCriteria);
 
@@ -279,6 +281,10 @@ export class ChatService {
                 criteria: uniqueCriteria,
             };
         });
+
+        await this.moderationService.recordConversationReport(conversationId);
+
+        return result;
     }
 
     async userHide(targetUserId: string, loggedInUserId: string) {
@@ -485,6 +491,10 @@ export class ChatService {
     ): Promise<boolean> {
         const conversation = await this.getConversationOrFail(conversation_id);
         await this.ensureConversationParticipant(conversation, user_id);
+
+        if (conversation.is_moderation_locked) {
+            throw new ForbiddenException('Conversation is moderated and messaging is disabled');
+        }
 
         if (conversation.type === conversation_type.group) {
             if (!conversation.is_active) {

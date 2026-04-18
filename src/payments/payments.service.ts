@@ -88,7 +88,7 @@ export class PaymentsService {
     );
 
     await this.userRepository.update(userId, {
-      is_subscribed_user: true,
+      isSubscribedUser: true,
     });
 
     return savedPaymentRecord;
@@ -420,7 +420,7 @@ export class PaymentsService {
     });
 
     await this.userRepository.update(userId, {
-      is_subscribed_user: Boolean(activeSubscription),
+      isSubscribedUser: Boolean(activeSubscription),
     });
   }
 
@@ -436,7 +436,7 @@ export class PaymentsService {
 
     if (expiredSubscriptions.affected) {
       await this.userRepository.update(userId, {
-        is_subscribed_user: false,
+        isSubscribedUser: false,
       });
     }
   }

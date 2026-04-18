@@ -51,6 +51,8 @@ import { BoostPaymentRecord } from './boost-payment/entities/boost-payment-recor
 import { PostBoost } from './boost-payment/entities/post-boost.entity';
 import { SubscriptionPayment } from './payments/entities/subscription-payment.entity';
 import { UserSubscription } from './payments/entities/user-subscription.entity';
+import { ModerationCase } from './moderation/entities/moderation-case.entity';
+import { ModerationAction } from './moderation/entities/moderation-action.entity';
 import { PaymentRecords } from './payments/entities/payments-record.entity';
 
 @Injectable()
@@ -120,6 +122,8 @@ export class AppService implements TypeOrmOptionsFactory {
         SubscriptionPackageBenefit,
         SubscriptionPayment,
         UserSubscription,
+        ModerationCase,
+        ModerationAction,
       ],
       synchronize: false, // Never use synchronize in production
       logging: isDevelopment,
