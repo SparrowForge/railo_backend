@@ -1,5 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
   BadRequestException,
+  ConflictException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -11,9 +17,13 @@ import { PostReport } from '../post/entities/post-report.entity';
 import { Posts } from '../post/entities/post.entity';
 import { ModerationAction } from './entities/moderation-action.entity';
 import { ModerationCase } from './entities/moderation-case.entity';
+import { ModerationRequest } from './entities/moderation-request.entity';
 import { ModerationActionTypeEnum } from './enums/moderation-action-type.enum';
 import { ModerationCaseStatusEnum } from './enums/moderation-case-status.enum';
+import { ModerationRequestStatusEnum } from './enums/moderation-request-status.enum';
 import { ModerationTargetTypeEnum } from './enums/moderation-target-type.enum';
+import { User } from '../users/entities/user.entity';
+import { PostService } from 'src/post/post.service';
 
 type ModerationEvidence = {
   id: string;
@@ -49,7 +59,163 @@ export class ModerationService {
 
     @InjectRepository(ModerationAction)
     private readonly moderationActionRepository: Repository<ModerationAction>,
+
+    @InjectRepository(ModerationRequest)
+    private readonly moderationRequestRepository: Repository<ModerationRequest>,
+
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+
+    @Inject(forwardRef(() => PostService))
+    private readonly postService: PostService,
   ) { }
+
+  async createModerationRequest(requestedById: string, message?: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: requestedById },
+      select: ['id', 'is_moderation_user'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.is_moderation_user) {
+      throw new ConflictException('User is already a moderation user');
+    }
+
+    const existingPendingRequest = await this.moderationRequestRepository.findOne({
+      where: {
+        requestedById,
+        status: ModerationRequestStatusEnum.pending,
+      },
+    });
+
+    if (existingPendingRequest) {
+      throw new ConflictException('You already have a pending moderation request');
+    }
+
+    const request = this.moderationRequestRepository.create({
+      requestedById,
+      message: message?.trim() || null,
+      reviewNote: null,
+      status: ModerationRequestStatusEnum.pending,
+      reviewedById: null,
+      reviewedAt: null,
+    });
+
+    return this.moderationRequestRepository.save(request);
+  }
+
+  async listModerationRequests(filters: {
+    page?: number;
+    limit?: number;
+    status?: ModerationRequestStatusEnum;
+  }) {
+    const page = Math.max(1, filters.page ?? 1);
+    const limit = Math.min(filters.limit ?? 20, 100);
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = this.moderationRequestRepository
+      .createQueryBuilder('request')
+      .leftJoinAndSelect('request.requestedBy', 'requestedBy')
+      .leftJoinAndSelect('request.reviewedBy', 'reviewedBy')
+      .orderBy('request.createdAt', 'DESC');
+
+    if (filters.status) {
+      queryBuilder.andWhere('request.status = :status', { status: filters.status });
+    }
+
+    const [items, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      items,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
+  }
+
+  async getMyModerationRequest(requestedById: string) {
+    return this.moderationRequestRepository.find({
+      where: { requestedById },
+      relations: {
+        requestedBy: true,
+        reviewedBy: true,
+      },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async cancelModerationRequest(requestedById: string) {
+    const request = await this.moderationRequestRepository.findOne({
+      where: {
+        requestedById,
+        status: ModerationRequestStatusEnum.pending,
+      },
+    });
+
+    if (!request) {
+      throw new NotFoundException('Pending moderation request not found');
+    }
+
+    request.status = ModerationRequestStatusEnum.cancelled;
+    request.reviewedById = null;
+    request.reviewedAt = null;
+    request.reviewNote = 'Cancelled by request owner';
+
+    return this.moderationRequestRepository.save(request);
+  }
+
+  async reviewModerationRequest(
+    requestId: string,
+    reviewedById: string,
+    approve: boolean,
+    note?: string,
+  ) {
+    const request = await this.moderationRequestRepository.findOne({
+      where: { id: requestId },
+      relations: { requestedBy: true },
+    });
+
+    if (!request) {
+      throw new NotFoundException('Moderation request not found');
+    }
+
+    if (request.status !== ModerationRequestStatusEnum.pending) {
+      throw new BadRequestException('This moderation request has already been reviewed');
+    }
+
+    if (request.requestedById === reviewedById) {
+      throw new BadRequestException('You cannot review your own moderation request');
+    }
+
+    request.status = approve
+      ? ModerationRequestStatusEnum.approved
+      : ModerationRequestStatusEnum.rejected;
+    request.reviewedById = reviewedById;
+    request.reviewedAt = new Date();
+    request.reviewNote = note?.trim() || null;
+
+    const savedRequest = await this.moderationRequestRepository.save(request);
+
+    if (approve) {
+      await this.userRepository.update(request.requestedById, {
+        is_moderation_user: true,
+      });
+    }
+
+    return {
+      request: savedRequest,
+      moderationUserGranted: approve,
+    };
+  }
 
   async recordPostReport(postId: string): Promise<ModerationCase> {
     const post = await this.postRepository.findOne({
@@ -384,34 +550,13 @@ export class ModerationService {
         },
         order: { createdAt: 'DESC' },
       });
-
-      const post =
-        reports[0]?.post ??
-        (await this.postRepository.findOne({
-          where: { id: moderationCase.targetId },
-          relations: { user: { file: true }, postFiles: { file: true }, pollOptions: true },
-          withDeleted: true,
-        }));
+      const post = await this.postService.getPostById(moderationCase.targetId);
 
       return {
         case: moderationCase,
         actions,
         reports: reports.map((report) => this.mapPostEvidence(report)),
-        targetSummary: post
-          ? {
-            type: 'post',
-            id: post.id,
-            text: post.text,
-            author: post.user
-              ? {
-                id: post.user.id,
-                name: post.user.name,
-                userName: post.user.user_name,
-                fileUrl: post.user.file?.public_url ?? null,
-              }
-              : null,
-          }
-          : null,
+        post
       };
     }
 

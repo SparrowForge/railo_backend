@@ -60,7 +60,7 @@ export class PostController {
     @ApiOperation({ summary: 'Get all post with pagination and filters', description: 'Retrieves a paginated list of all active post with optional filtering by role, department, and search terms. Requires authentication.', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
     async getPostById(@CurrentUser() user: AuthUser, @Param('id') id: string,): Promise<BaseResponseDto<any>> {
-        const post = await this.postService.getPostById(user.userId, id);
+        const post = await this.postService.getPostById(id);
         return new BaseResponseDto(post, 'Post retrieved successfully');
     }
 

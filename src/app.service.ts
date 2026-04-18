@@ -53,6 +53,7 @@ import { SubscriptionPayment } from './payments/entities/subscription-payment.en
 import { UserSubscription } from './payments/entities/user-subscription.entity';
 import { ModerationCase } from './moderation/entities/moderation-case.entity';
 import { ModerationAction } from './moderation/entities/moderation-action.entity';
+import { ModerationRequest } from './moderation/entities/moderation-request.entity';
 import { PaymentRecords } from './payments/entities/payments-record.entity';
 
 @Injectable()
@@ -124,6 +125,7 @@ export class AppService implements TypeOrmOptionsFactory {
         UserSubscription,
         ModerationCase,
         ModerationAction,
+        ModerationRequest,
       ],
       synchronize: false, // Never use synchronize in production
       logging: isDevelopment,

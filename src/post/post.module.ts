@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PostService } from './post.service';
 import { PostController } from './post.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -19,8 +19,13 @@ import { PostPollVote } from './entities/post-poll-vote.entity';
 import { ModerationModule } from 'src/moderation/moderation.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Posts, PostLike, PostPin, PostView, UserLocation, PostPollOption, PostPollVote, PostFile, PostReport, PostReportCriteria, PostHide, PostNotification, UserPosttHide]), NotificationsModule, ModerationModule],
+  imports: [
+    TypeOrmModule.forFeature([Posts, PostLike, PostPin, PostView, UserLocation, PostPollOption, PostPollVote, PostFile, PostReport, PostReportCriteria, PostHide, PostNotification, UserPosttHide]),
+    NotificationsModule,
+    forwardRef(() => ModerationModule),
+  ],
   providers: [PostService],
-  controllers: [PostController]
+  controllers: [PostController],
+  exports: [PostService],
 })
 export class PostModule { }

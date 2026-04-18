@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, forwardRef, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Posts } from './entities/post.entity';
@@ -36,6 +36,7 @@ import { UserPosttHide } from './entities/user-post-hide.entity';
 import { PostPollVote } from './entities/post-poll-vote.entity';
 import { PostModeEnum } from './dto/post-mode.enum';
 import { ModerationService } from 'src/moderation/moderation.service';
+import { PostReportCriteriaEnum } from './dto/post-report-criteria.enum';
 
 @Injectable()
 export class PostService {
@@ -84,6 +85,7 @@ export class PostService {
         private readonly userHideRepo: Repository<UserPosttHide>,
 
         private readonly notificationService: NotificationService,
+        @Inject(forwardRef(() => ModerationService))
         private readonly moderationService: ModerationService,
     ) { }
 
@@ -224,7 +226,7 @@ export class PostService {
         return await this.loadPostWithRelations(post.id);
     }
 
-    async getPostById(userId: string, postId: string) {
+    async getPostById(postId: string) {
         const post = await this.postRepo.findOneBy({
             id: postId,
         });
@@ -234,7 +236,7 @@ export class PostService {
         }
 
         const res = await this.getGlobalFeed(
-            userId, // logged-in user
+            post.userId, // logged-in user
             { limit: 1, page: 1 },
             {
                 page: 1,
@@ -243,7 +245,34 @@ export class PostService {
             postId
         )
 
-        return res?.items[0];
+        const reports = await this.postReportRepo.find({
+            where: { postId: postId },
+            relations: ["criteriaRows"]
+        });
+
+        const reportsRes = reports.flatMap(report => {
+            return report.criteriaRows.map(criteriaRow => {
+                return {
+                    criteriaRow: criteriaRow.criteria
+                }
+            })
+        })
+        const postReports: { criteria: PostReportCriteriaEnum; count: number }[] = reportsRes.reduce<{ criteria: PostReportCriteriaEnum; count: number }[]>(
+            (acc, curr) => {
+                const existing = acc.find(item => item.criteria === curr.criteriaRow);
+
+                if (existing) {
+                    existing.count++;
+                } else {
+                    acc.push({ criteria: curr.criteriaRow, count: 1 });
+                }
+
+                return acc;
+            }, []);
+
+
+
+        return { ...res?.items[0], postReports };
     }
 
     async softDelete(postId: string, userId: string) {
@@ -1575,5 +1604,6 @@ export class PostService {
         this.logger.log(`Poll expiration check completed. Marked ${result.affected ?? 0} poll posts as complete.`);
     }
 }
+
 
 
