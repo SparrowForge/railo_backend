@@ -55,6 +55,7 @@ import { ModerationCase } from './moderation/entities/moderation-case.entity';
 import { ModerationAction } from './moderation/entities/moderation-action.entity';
 import { ModerationRequest } from './moderation/entities/moderation-request.entity';
 import { PaymentRecords } from './payments/entities/payments-record.entity';
+import { StickerUpload } from './sticker-upload/entities/sticker-upload.entity';
 
 @Injectable()
 
@@ -126,6 +127,7 @@ export class AppService implements TypeOrmOptionsFactory {
         ModerationCase,
         ModerationAction,
         ModerationRequest,
+        StickerUpload
       ],
       synchronize: false, // Never use synchronize in production
       logging: isDevelopment,

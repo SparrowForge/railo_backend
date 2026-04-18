@@ -31,6 +31,7 @@ import { BoostPaymentModule } from './boost-payment/boost-payment.module';
 import { SubscriptionPackageModule } from './subscription-package/subscription-package.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ModerationModule } from './moderation/moderation.module';
+import { StickerUploadModule } from './sticker-upload/sticker-upload.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { ModerationModule } from './moderation/moderation.module';
     SubscriptionPackageModule,
     PaymentsModule,
     ModerationModule,
+    StickerUploadModule,
   ],
   controllers: [AppController],
   providers: [
