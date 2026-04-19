@@ -41,6 +41,7 @@ import { BaseResponseDto } from 'src/common/dto/base-response.dto';
 import { PaginatedResponseDto } from 'src/common/dto/paginated-response.dto';
 
 import { Public } from '../common/decorators/public.decorator';
+import { FILE_UPLOAD_MAX_SIZE_BYTES } from './file-upload.constants';
 import { FileResponseDto } from './dto/file-response.dto';
 import { FilterFilesDto } from './dto/filter-files.dto';
 import { UploadFileDto } from './dto/upload-file.dto';
@@ -75,7 +76,8 @@ export class FilesController {
         file: {
           type: 'string',
           format: 'binary',
-          description: 'File to upload (max 10MB)',
+          description:
+            'File to upload. Maximum size depends on file_type, up to 100MB for video uploads.',
         },
         file_type: {
           type: 'string',
@@ -127,7 +129,7 @@ export class FilesController {
     @UploadedFile(
       new ParseFilePipe({
         validators: [
-          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB
+          new MaxFileSizeValidator({ maxSize: FILE_UPLOAD_MAX_SIZE_BYTES }),
           new FileTypeValidator({
             fileType:
               /image\/(png|jpeg|jpg|gif)|application\/pdf|video\/(mp4|quicktime)|audio\/(mpeg|mp3|wav|ogg|webm|aac|x-m4a|mp4)/,

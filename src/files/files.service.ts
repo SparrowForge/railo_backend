@@ -16,6 +16,7 @@ import { PaginatedResponseDto } from 'src/common/dto/paginated-response.dto';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { Repository } from 'typeorm';
 
+import { FILE_UPLOAD_MAX_SIZE_BY_TYPE } from './file-upload.constants';
 import { FileResponseDto } from './dto/file-response.dto';
 import { FilterFilesDto } from './dto/filter-files.dto';
 import { UploadFileDto } from './dto/upload-file.dto';
@@ -347,19 +348,7 @@ export class FilesService {
   }
 
   private getMaxFileSize(fileType: FileType): number {
-    switch (fileType) {
-      case FileType.PHOTO:
-        return 5 * 1024 * 1024; // 5MB for images
-      case FileType.VIDEO:
-        return 100 * 1024 * 1024; // 100MB for videos
-      case FileType.AUDIO:
-        return 30 * 1024 * 1024; // 30MB for audio
-      case FileType.DOCUMENT:
-      case FileType.RECEIPT:
-        return 20 * 1024 * 1024; // 20MB for documents
-      default:
-        return 50 * 1024 * 1024; // 50MB default
-    }
+    return FILE_UPLOAD_MAX_SIZE_BY_TYPE[fileType] ?? 50 * 1024 * 1024;
   }
 
   private getAllowedMimeTypes(fileType: FileType): string[] {
