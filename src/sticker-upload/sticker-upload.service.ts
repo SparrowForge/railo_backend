@@ -13,7 +13,7 @@ export class StickerUploadService {
   constructor(
     @InjectRepository(StickerUpload)
     private readonly stickerUploadRepository: Repository<StickerUpload>,
-  ) {}
+  ) { }
 
   async create(uploadedByUserId: string, dto: CreateStickerUploadDto) {
     const stickerUpload = this.stickerUploadRepository.create({
@@ -28,7 +28,7 @@ export class StickerUploadService {
   async findAll(
     paginationDto: PaginationDto,
     filters?: Partial<FilterStickerUploadDto>,
-  ): Promise<PaginatedResponseDto<StickerUpload>> {
+  ): Promise<PaginatedResponseDto<{ fileId: number, publicUrl: string }>> {
     const page = Math.max(1, paginationDto.page ?? 1);
     const limit = Math.min(Math.max(1, paginationDto.limit ?? 10), 100);
     const skip = (page - 1) * limit;
@@ -65,8 +65,21 @@ export class StickerUploadService {
     const [items, total] = await qb.getManyAndCount();
     const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
 
+    const resItems: { fileId: number, publicUrl: string }[] = [];
+    for (const item of items) {
+      if (!item.file) {
+        continue;
+      }
+      const resItem = {
+        fileId: item.file.id,
+        publicUrl: item.file.public_url,
+      };
+      resItems.push(resItem);
+    }
+
+
     return {
-      items,
+      items: resItems,
       meta: {
         total,
         page,
