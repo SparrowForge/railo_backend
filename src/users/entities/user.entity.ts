@@ -129,6 +129,10 @@ export class User {
   @JoinColumn({ name: 'file_id' })
   file: Files;
 
+  @ApiProperty()
+  @Column({ type: 'timestamp', nullable: true })
+  subscription_end_at: Date;
+
   //====================================================================
 
   @ApiProperty({ description: 'Created by user id', example: 'xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', })
