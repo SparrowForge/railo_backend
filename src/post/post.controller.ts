@@ -31,16 +31,6 @@ export class PostController {
         return new BaseResponseDto(post, 'Global feed retrieved successfully');
     }
 
-    @Get('get-user-feed')
-    @ApiOperation({ summary: 'Get all post with pagination and filters', description: 'Retrieves a paginated list of all active post with optional filtering by role, department, and search terms. Requires authentication.', })
-    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
-    async getUserFeed(@Query() filters: FilterPostDto) {
-        const { page, limit } = filters;
-        const pagination = { page, limit };
-        const post = await this.postService.getUserFeed(pagination, filters.userId ?? '');
-        return new BaseResponseDto(post, 'User feed list retrieved successfully');
-    }
-
     @Get('get-user-profile-feed')
     @ApiOperation({ summary: 'Get all post with pagination and filters', description: 'Retrieves a paginated list of all active post with optional filtering by role, department, and search terms. Requires authentication.', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
@@ -49,11 +39,21 @@ export class PostController {
         const pagination = { page, limit };
         const post = await this.postService.getUserProfileFeed(
             pagination,
-            (filters.userId ?? ''),
             user.userId,
+            (filters.userId ?? ''),
             filters.userInteractionType,
             filters);
         return new BaseResponseDto(post, 'User profile feed list retrieved successfully');
+    }
+
+    @Get('get-user-feed')
+    @ApiOperation({ summary: 'Get all post with pagination and filters', description: 'Retrieves a paginated list of all active post with optional filtering by role, department, and search terms. Requires authentication.', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async getUserFeed(@Query() filters: FilterPostDto) {
+        const { page, limit } = filters;
+        const pagination = { page, limit };
+        const post = await this.postService.getUserFeed(pagination, filters.userId ?? '');
+        return new BaseResponseDto(post, 'User feed list retrieved successfully');
     }
 
     @Get('get-post/:id')

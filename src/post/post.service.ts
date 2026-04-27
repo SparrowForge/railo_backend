@@ -721,8 +721,8 @@ export class PostService {
 
     async getUserProfileFeed(
         paginationDto: PaginationDto,
-        profileUserId: string, // profile owner
         viewerUserId: string, // logged-in user
+        profileUserId?: string, // profile owner
         userInteractionType?: UserInteractionEnum,
         filters?: FilterPostDto
     ): Promise<PaginatedResponseDto<Posts>> {
@@ -856,13 +856,18 @@ export class PostService {
                     LIMIT 1
                 )`,
             )
-            .where('post.userId = :profileUserId', {
-                profileUserId,
-            })
+            .where('1=1')
             .andWhere('post.deletedAt IS NULL')
             .orderBy('post.createdAt', 'DESC')
             .skip(skip)
             .take(limit);
+
+        if (profileUserId) {
+            queryBuilder
+                .andWhere('post.userId = :profileUserId', {
+                    profileUserId,
+                });
+        }
 
         if (currentUserLocation) {
             queryBuilder.addSelect(
@@ -885,18 +890,18 @@ export class PostService {
         if (userInteractionType) {
             if (userInteractionType === UserInteractionEnum.MyRolla) {
                 queryBuilder
-                    .andWhere('post.userId = :profileUserId', {
-                        profileUserId,
+                    .andWhere('post.userId = :userId', {
+                        userId,
                     });
             } else if (userInteractionType === UserInteractionEnum.MyReplies) {
                 queryBuilder
-                    .andWhere('post.userId = :profileUserId', {
-                        profileUserId,
+                    .andWhere('post.userId = :userId', {
+                        userId,
                     });
             } else if (userInteractionType === UserInteractionEnum.MyVotes) {
                 queryBuilder
-                    .andWhere('post.userId = :profileUserId', {
-                        profileUserId,
+                    .andWhere('post.userId = :userId', {
+                        userId,
                     });
             } else if (userInteractionType === UserInteractionEnum.MyPins) {
                 queryBuilder
