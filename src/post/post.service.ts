@@ -544,6 +544,16 @@ export class PostService {
                     visibility: PostVisibilityEnum.GHOST
                 });
             }
+            if (filters.userInteractionType === UserInteractionEnum.MyPins) {
+                queryBuilder
+                    .innerJoin(
+                        PostPin,
+                        'profilePinnedPost',
+                        'profilePinnedPost.postId = post.id AND profilePinnedPost.userId = :profileUserId',
+                        { userId },
+                    );
+            }
+
         }
         if (filters?.postMode == PostModeEnum.Explored) {
             const exploredCutoffDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
