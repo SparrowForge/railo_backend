@@ -549,7 +549,7 @@ export class PostService {
                     .innerJoin(
                         PostPin,
                         'profilePinnedPost',
-                        'profilePinnedPost.postId = post.id AND profilePinnedPost.userId = :profileUserId',
+                        'profilePinnedPost.postId = post.id AND profilePinnedPost.userId = :userId',
                         { userId },
                     );
             }
