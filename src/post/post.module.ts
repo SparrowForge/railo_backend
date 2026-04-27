@@ -17,10 +17,20 @@ import { PostNotification } from './entities/post-notification.entity';
 import { UserPosttHide } from './entities/user-post-hide.entity';
 import { PostPollVote } from './entities/post-poll-vote.entity';
 import { ModerationModule } from 'src/moderation/moderation.module';
+import { Comments } from 'src/comments/entities/comment.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Posts, PostLike, PostPin, PostView, UserLocation, PostPollOption, PostPollVote, PostFile, PostReport, PostReportCriteria, PostHide, PostNotification, UserPosttHide]),
+    TypeOrmModule.forFeature([
+      Posts,
+      PostLike,
+      PostPin,
+      PostView,
+      UserLocation,
+      PostPollOption,
+      PostPollVote, PostFile, PostReport, PostReportCriteria, PostHide, PostNotification,
+      UserPosttHide,
+      Comments]),
     NotificationsModule,
     forwardRef(() => ModerationModule),
   ],

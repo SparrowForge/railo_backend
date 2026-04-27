@@ -37,6 +37,7 @@ import { PostPollVote } from './entities/post-poll-vote.entity';
 import { PostModeEnum } from './dto/post-mode.enum';
 import { ModerationService } from 'src/moderation/moderation.service';
 import { PostReportCriteriaEnum } from './dto/post-report-criteria.enum';
+import { Comments } from 'src/comments/entities/comment.entity';
 
 @Injectable()
 export class PostService {
@@ -895,14 +896,20 @@ export class PostService {
                     });
             } else if (userInteractionType === UserInteractionEnum.MyReplies) {
                 queryBuilder
-                    .andWhere('post.userId = :userId', {
-                        userId,
-                    });
+                    .innerJoin(
+                        Comments,
+                        'postComments',
+                        'postComments.postId = post.id AND postComments.userId = :userId',
+                        { userId },
+                    );
             } else if (userInteractionType === UserInteractionEnum.MyVotes) {
                 queryBuilder
-                    .andWhere('post.userId = :userId', {
-                        userId,
-                    });
+                    .innerJoin(
+                        PostPollVote,
+                        'postPollVote',
+                        'postPollVote.postId = post.id AND postPollVote.userId = :userId',
+                        { userId },
+                    );
             } else if (userInteractionType === UserInteractionEnum.MyPins) {
                 queryBuilder
                     .innerJoin(
