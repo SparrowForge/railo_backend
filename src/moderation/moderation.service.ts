@@ -258,7 +258,7 @@ export class ModerationService {
       throw new NotFoundException('Conversation not found');
     }
 
-    return this.upsertCase(
+    return this.upsertConversationCase(
       ModerationTargetTypeEnum.conversation,
       conversationId,
       async () => {
@@ -291,6 +291,9 @@ export class ModerationService {
 
     const queryBuilder = this.moderationCaseRepository
       .createQueryBuilder('case')
+      .leftJoinAndSelect('case.post', 'post')
+      .leftJoinAndSelect('case.conversation', 'conversation')
+      .leftJoinAndSelect('post.user', 'user')
       .orderBy('case.lastReportedAt', 'DESC', 'NULLS LAST')
       .addOrderBy('case.updatedAt', 'DESC');
 
@@ -386,20 +389,20 @@ export class ModerationService {
           break;
         case ModerationActionTypeEnum.hide_post:
           this.ensureTargetType(currentCase, ModerationTargetTypeEnum.post, actionType);
-          await postRepo.softDelete(currentCase.targetId);
+          await postRepo.softDelete(currentCase.postId);
           currentCase.status = ModerationCaseStatusEnum.resolved;
           currentCase.reviewedAt = new Date();
           break;
         case ModerationActionTypeEnum.restore_post:
           this.ensureTargetType(currentCase, ModerationTargetTypeEnum.post, actionType);
-          await postRepo.restore(currentCase.targetId);
+          await postRepo.restore(currentCase.postId);
           currentCase.status = ModerationCaseStatusEnum.resolved;
           currentCase.reviewedAt = new Date();
           break;
         case ModerationActionTypeEnum.lock_conversation:
           this.ensureTargetType(currentCase, ModerationTargetTypeEnum.conversation, actionType);
           await conversationRepo.update(
-            { id: currentCase.targetId },
+            { id: currentCase.postId },
             {
               is_moderation_locked: true,
               moderation_locked_by: moderatorUserId,
@@ -413,7 +416,7 @@ export class ModerationService {
         case ModerationActionTypeEnum.unlock_conversation:
           this.ensureTargetType(currentCase, ModerationTargetTypeEnum.conversation, actionType);
           await conversationRepo.update(
-            { id: currentCase.targetId },
+            { id: currentCase.postId },
             {
               is_moderation_locked: false,
               moderation_locked_by: null,
@@ -497,8 +500,33 @@ export class ModerationService {
   ) {
     const moderationCase =
       (await this.moderationCaseRepository.findOne({
-        where: { targetType, targetId },
-      })) ?? this.moderationCaseRepository.create({ targetType, targetId });
+        where: { targetType, postId: targetId },
+      })) ?? this.moderationCaseRepository.create({ targetType, postId: targetId });
+
+    const snapshot = await snapshotFactory();
+    moderationCase.reportCount = snapshot.reportCount;
+    moderationCase.lastReportedAt = snapshot.lastReportedAt;
+
+    if (
+      moderationCase.status === ModerationCaseStatusEnum.resolved ||
+      moderationCase.status === ModerationCaseStatusEnum.dismissed ||
+      moderationCase.status === ModerationCaseStatusEnum.escalated
+    ) {
+      moderationCase.status = ModerationCaseStatusEnum.open;
+      moderationCase.reviewedAt = null;
+    }
+
+    return this.moderationCaseRepository.save(moderationCase);
+  }
+  private async upsertConversationCase(
+    targetType: ModerationTargetTypeEnum,
+    conversationId: string,
+    snapshotFactory: () => Promise<{ reportCount: number; lastReportedAt: Date }>,
+  ) {
+    const moderationCase =
+      (await this.moderationCaseRepository.findOne({
+        where: { targetType, conversationId },
+      })) ?? this.moderationCaseRepository.create({ targetType, conversationId });
 
     const snapshot = await snapshotFactory();
     moderationCase.reportCount = snapshot.reportCount;
@@ -519,15 +547,16 @@ export class ModerationService {
   private async enrichCase(moderationCase: ModerationCase) {
     const detail = await this.getCaseDetail(moderationCase);
     return {
-      id: moderationCase.id,
-      targetType: moderationCase.targetType,
-      targetId: moderationCase.targetId,
-      status: moderationCase.status,
-      reportCount: moderationCase.reportCount,
-      lastReportedAt: moderationCase.lastReportedAt,
-      reviewedAt: moderationCase.reviewedAt,
-      createdAt: moderationCase.createdAt,
-      updatedAt: moderationCase.updatedAt,
+      ...moderationCase,
+      // id: moderationCase.id,
+      // targetType: moderationCase.targetType,
+      // targetId: moderationCase.postId,
+      // status: moderationCase.status,
+      // reportCount: moderationCase.reportCount,
+      // lastReportedAt: moderationCase.lastReportedAt,
+      // reviewedAt: moderationCase.reviewedAt,
+      // createdAt: moderationCase.createdAt,
+      // updatedAt: moderationCase.updatedAt,
       latestAction: detail.actions[0] ?? null,
       targetSummary: detail.targetSummary,
     };
@@ -542,7 +571,7 @@ export class ModerationService {
 
     if (moderationCase.targetType === ModerationTargetTypeEnum.post) {
       const reports = await this.postReportRepository.find({
-        where: { postId: moderationCase.targetId },
+        where: { postId: moderationCase.postId },
         relations: {
           user: { file: true },
           criteriaRows: true,
@@ -550,7 +579,7 @@ export class ModerationService {
         },
         order: { createdAt: 'DESC' },
       });
-      const post = await this.postService.getPostById(moderationCase.targetId);
+      const post = await this.postService.getPostById(moderationCase.postId);
 
       return {
         case: moderationCase,
@@ -561,7 +590,7 @@ export class ModerationService {
     }
 
     const reports = await this.chatReportRepository.find({
-      where: { conversationId: moderationCase.targetId },
+      where: { conversationId: moderationCase.postId },
       relations: {
         loggedInUser: { file: true },
         criteriaRows: true,
@@ -578,7 +607,7 @@ export class ModerationService {
     const conversation =
       reports[0]?.conversation ??
       (await this.conversationRepository.findOne({
-        where: { id: moderationCase.targetId },
+        where: { id: moderationCase.postId },
         relations: {
           participants: {
             user: { file: true },
