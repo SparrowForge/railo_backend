@@ -10,26 +10,26 @@ export const NotificationOptions:
     [NotificationTypeEnum.NewPost]: {
         title: (context?: string) => context ?? 'New Post',
         body: (context?: string) => `New post form ${context ?? ''}`,
-        payload: (record?: Record<string, string>) => ({ onPress: 'handleNewPostOnPress', ...record }),
+        payload: (record?: Record<string, string>) => ({ type: 'post', ...record }),
     },
     [NotificationTypeEnum.PostLike]: {
         title: (context?: string) => context ?? 'Post like',
         body: (context?: string) => `Post liked by ${context ?? ''}`,
-        payload: (record?: Record<string, string>) => ({ onPress: 'handlePostLikeOnPress', ...record }),
+        payload: (record?: Record<string, string>) => ({ type: 'post', ...record }),
     },
     [NotificationTypeEnum.PostComment]: {
         title: (context?: string) => context ?? 'New Comments',
         body: (context?: string) => `New comments on this post ${context ?? ''}`,
-        payload: (record?: Record<string, string>) => ({ onPress: 'handlePostCommentOnPress', ...record }),
+        payload: (record?: Record<string, string>) => ({ type: 'post', ...record }),
     },
     [NotificationTypeEnum.NewMessage]: {
         title: (context?: string) => context ?? 'New Message',
         body: (context?: string) => `New message form ${context ?? ''}`,
-        payload: (record?: Record<string, string>) => ({ onPress: 'handleNewMessageOnPress', ...record }),
+        payload: (record?: Record<string, string>) => ({ type: 'message', ...record }),
     },
     [NotificationTypeEnum.PostShare]: {
         title: (context?: string) => context ?? 'Post shared',
         body: (context?: string) => `Post shared by ${context ?? ''}`,
-        payload: (record?: Record<string, string>) => ({ onPress: 'handlePostShareOnPress', ...record }),
+        payload: (record?: Record<string, string>) => ({ type: 'post', ...record }),
     }
 }
