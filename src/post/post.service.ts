@@ -46,6 +46,9 @@ export class PostService {
     constructor(
         private readonly dataSource: DataSource,
 
+        @InjectRepository(User)
+        private readonly userRepo: Repository<User>,
+
         @InjectRepository(Posts)
         private readonly postRepo: Repository<Posts>,
 
@@ -1596,10 +1599,16 @@ export class PostService {
             [userId],
         );
 
+        const postShareUser = await this.userRepo.findOne({
+            where: {
+                id: userId,
+            }
+        })
+
         await this.notificationService.sendNotificationToUsers({
             userIds: [originalPost.userId, ...subscriberIds],
             title: NotificationOptions[NotificationTypeEnum.PostShare].title(),
-            body: NotificationOptions[NotificationTypeEnum.PostShare].body(),
+            body: NotificationOptions[NotificationTypeEnum.PostShare].body(postShareUser?.name),
             payload: NotificationOptions[NotificationTypeEnum.PostShare].payload({ postId: originalPostId }),
         });
 

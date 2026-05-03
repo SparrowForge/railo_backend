@@ -18,17 +18,24 @@ import { UserPosttHide } from './entities/user-post-hide.entity';
 import { PostPollVote } from './entities/post-poll-vote.entity';
 import { ModerationModule } from 'src/moderation/moderation.module';
 import { Comments } from 'src/comments/entities/comment.entity';
+import { User } from 'src/users/entities/user.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
+      User,
       Posts,
       PostLike,
       PostPin,
       PostView,
       UserLocation,
       PostPollOption,
-      PostPollVote, PostFile, PostReport, PostReportCriteria, PostHide, PostNotification,
+      PostPollVote,
+      PostFile,
+      PostReport,
+      PostReportCriteria,
+      PostHide,
+      PostNotification,
       UserPosttHide,
       Comments]),
     NotificationsModule,
