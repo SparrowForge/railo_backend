@@ -344,6 +344,9 @@ export class PostService {
                 user_name: true,
             },
         });
+        const currentUserCity = currentUserLocation?.city?.trim();
+        const shouldPrioritizeCurrentUserCity =
+            filters?.postMode !== PostModeEnum.Explored && !!currentUserCity;
 
         const queryBuilder = this.postRepo
             .createQueryBuilder('post')
@@ -462,10 +465,33 @@ export class PostService {
             })
             .andWhere('post.deletedAt IS NULL');
 
+        if (shouldPrioritizeCurrentUserCity) {
+            queryBuilder
+                .addSelect(
+                    'CASE WHEN post.city ILIKE :currentUserCity THEN 0 ELSE 1 END',
+                    'currentUserCityPriority',
+                )
+                .setParameter('currentUserCity', currentUserCity);
+        }
+
+        const orderByWithCurrentUserCityPriority = (
+            sort: string,
+            order: 'ASC' | 'DESC',
+        ) => {
+            if (shouldPrioritizeCurrentUserCity) {
+                queryBuilder
+                    .orderBy('currentUserCityPriority', 'ASC')
+                    .addOrderBy(sort, order);
+                return;
+            }
+
+            queryBuilder.orderBy(sort, order);
+        };
+
         if (filters.isTopContent && filters.isTopContent === true) {
-            queryBuilder.orderBy('post.likeCount', 'DESC');
+            orderByWithCurrentUserCityPriority('post.likeCount', 'DESC');
         } else {
-            queryBuilder.orderBy('post.createdAt', 'DESC');
+            orderByWithCurrentUserCityPriority('post.createdAt', 'DESC');
         }
         queryBuilder
             .skip(skip)
@@ -534,13 +560,13 @@ export class PostService {
         }
         if (filters?.userInteractionType) {
             if (filters.userInteractionType === UserInteractionEnum.TheBest) {
-                queryBuilder.orderBy('post.likeCount', 'DESC');
+                orderByWithCurrentUserCityPriority('post.likeCount', 'DESC');
             }
             if (filters.userInteractionType === UserInteractionEnum.MyFaves) {
-                queryBuilder.orderBy('post.likeCount', 'DESC');
+                orderByWithCurrentUserCityPriority('post.likeCount', 'DESC');
             }
             if (filters.userInteractionType === UserInteractionEnum.Near) {
-                queryBuilder.orderBy('distance_km', 'ASC');
+                orderByWithCurrentUserCityPriority('distance_km', 'ASC');
                 queryBuilder.addOrderBy('post.createdAt', 'DESC');
             }
             if (filters.userInteractionType === UserInteractionEnum.Ghosts) {
