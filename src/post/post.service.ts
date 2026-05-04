@@ -469,7 +469,7 @@ export class PostService {
             queryBuilder
                 .addSelect(
                     'CASE WHEN post.city ILIKE :currentUserCity THEN 0 ELSE 1 END',
-                    'currentUserCityPriority',
+                    'current_user_city_priority',
                 )
                 .setParameter('currentUserCity', currentUserCity);
         }
@@ -480,7 +480,7 @@ export class PostService {
         ) => {
             if (shouldPrioritizeCurrentUserCity) {
                 queryBuilder
-                    .orderBy('currentUserCityPriority', 'ASC')
+                    .orderBy('current_user_city_priority', 'ASC')
                     .addOrderBy(sort, order);
                 return;
             }
