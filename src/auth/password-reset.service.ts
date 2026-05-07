@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -12,6 +14,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { VerifyCodeDto } from './dto/verify-code.dto';
 import { EmailService } from './email.service';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PasswordResetService {
@@ -20,6 +23,7 @@ export class PasswordResetService {
     private passwordResetRepository: Repository<PasswordResetToken>,
     private usersService: UsersService,
     private emailService: EmailService,
+    private configService: ConfigService,
   ) { }
 
   /**
@@ -65,7 +69,12 @@ export class PasswordResetService {
     await this.passwordResetRepository.save(resetToken);
 
     // Send verification code via email
-    await this.emailService.sendVerificationCode(email, code);
+    // await this.emailService.sendVerificationCode(email, code);
+
+    this.sendEmailByExternalApi('/api/v1/email/send-varificatio-code-email', {
+      email,
+      code
+    });
   }
 
   /**
@@ -139,5 +148,38 @@ export class PasswordResetService {
     await this.passwordResetRepository.delete({
       expiresAt: LessThan(new Date()),
     });
+  }
+
+
+  private sendEmailByExternalApi(
+    endpoint: string,
+    body: Record<string, unknown>,
+  ): void {
+    const emailSendUrl = this.buildEmailSendUrl(endpoint);
+    const emailSendHeaderKey = this.configService.get<string>('EMAIL_SEND_HEADER_KEY');
+
+    if (!emailSendHeaderKey) {
+      throw new InternalServerErrorException('Email sending configuration is missing');
+    }
+
+    const response = fetch(emailSendUrl, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-email-key': emailSendHeaderKey,
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+
+  private buildEmailSendUrl(endpoint: string): string {
+    const emailSendBaseUrl = this.configService.get<string>('EMAIL_SEND_URL');
+
+    if (!emailSendBaseUrl) {
+      throw new InternalServerErrorException('Email sending configuration is missing');
+    }
+
+    return `${emailSendBaseUrl.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
   }
 }
