@@ -8,7 +8,7 @@ import { CommentDto } from './dto/comment.dto';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { ReplyCommentDto } from './dto/reply-comment.dto';
 import { NotificationService } from 'src/notifications/notifications.service';
-import { NotificationTypeEnum } from 'src/notifications/data/notification-type.enum';
+import { NotificationTypeEnum } from '../notifications/data/notification-type.enum';
 import { NotificationOptions } from 'src/notifications/data/notification-options';
 import { UpdateCommentsDto } from './dto/UpdateComments.Dto';
 

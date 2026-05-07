@@ -23,7 +23,7 @@ import { FilterCommentsEnum } from './dto/filter-comments.enum';
 import { User } from 'src/users/entities/user.entity';
 import { Gender } from 'src/users/enum/gender.enum';
 import { NotificationService } from 'src/notifications/notifications.service';
-import { NotificationTypeEnum } from 'src/notifications/data/notification-type.enum';
+import { NotificationTypeEnum } from '../notifications/data/notification-type.enum';
 import { NotificationOptions } from 'src/notifications/data/notification-options';
 import { PostPollOption } from './entities/post-poll-options.entity';
 import { PostFile } from './entities/post-file.entity';
