@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { conversation_type } from "src/common/enums/conversation-type.enum";
+import { conversation_type } from "../../common/enums/conversation-type.enum";
 import { User } from "src/users/entities/user.entity";
 import { ConversationParticipant } from "./conversation-participant.entity";
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from "typeorm";
