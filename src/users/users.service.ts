@@ -181,6 +181,11 @@ export class UsersService {
         name: filters.name,
       });
     }
+    if (filters?.userId) {
+      queryBuilder.andWhere('account.user_id = :user_id', {
+        user_id: filters.userId,
+      });
+    }
 
 
     const [items, total] = await queryBuilder.getManyAndCount();

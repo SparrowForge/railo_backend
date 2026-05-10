@@ -17,6 +17,11 @@ export class FilterUserDto extends PaginationDto {
   @IsString()
   name?: string;
 
+  @ApiProperty({ description: 'Filter by phone_no', required: false, })
+  @IsOptional()
+  @IsString()
+  userId?: string;
+
   @ApiProperty({ description: 'Filter by department', required: false, })
   @IsOptional()
   @IsString()
