@@ -23,8 +23,8 @@ import { FilterCommentsEnum } from './dto/filter-comments.enum';
 import { User } from 'src/users/entities/user.entity';
 import { Gender } from 'src/users/enum/gender.enum';
 import { NotificationService } from 'src/notifications/notifications.service';
-import { NotificationTypeEnum } from 'src/notifications/entity/notification-type.enum';
-import { NotificationOptions } from 'src/notifications/entity/notification-options';
+import { NotificationTypeEnum } from '../notifications/data/notification-type.enum';
+import { NotificationOptions } from '../notifications/data/notification-options';
 import { PostPollOption } from './entities/post-poll-options.entity';
 import { PostFile } from './entities/post-file.entity';
 import { CreatePostReportDto } from './dto/create-post-report.dto';
@@ -45,6 +45,9 @@ export class PostService {
 
     constructor(
         private readonly dataSource: DataSource,
+
+        @InjectRepository(User)
+        private readonly userRepo: Repository<User>,
 
         @InjectRepository(Posts)
         private readonly postRepo: Repository<Posts>,
@@ -341,6 +344,9 @@ export class PostService {
                 user_name: true,
             },
         });
+        const currentUserCity = currentUserLocation?.city?.trim();
+        const shouldPrioritizeCurrentUserCity =
+            filters?.postMode !== PostModeEnum.Explored && !!currentUserCity;
 
         const queryBuilder = this.postRepo
             .createQueryBuilder('post')
@@ -459,10 +465,33 @@ export class PostService {
             })
             .andWhere('post.deletedAt IS NULL');
 
+        if (shouldPrioritizeCurrentUserCity) {
+            queryBuilder
+                .addSelect(
+                    'CASE WHEN post.city ILIKE :currentUserCity THEN 0 ELSE 1 END',
+                    'current_user_city_priority',
+                )
+                .setParameter('currentUserCity', currentUserCity);
+        }
+
+        const orderByWithCurrentUserCityPriority = (
+            sort: string,
+            order: 'ASC' | 'DESC',
+        ) => {
+            if (shouldPrioritizeCurrentUserCity) {
+                queryBuilder
+                    .orderBy('current_user_city_priority', 'ASC')
+                    .addOrderBy(sort, order);
+                return;
+            }
+
+            queryBuilder.orderBy(sort, order);
+        };
+
         if (filters.isTopContent && filters.isTopContent === true) {
-            queryBuilder.orderBy('post.likeCount', 'DESC');
+            orderByWithCurrentUserCityPriority('post.likeCount', 'DESC');
         } else {
-            queryBuilder.orderBy('post.createdAt', 'DESC');
+            orderByWithCurrentUserCityPriority('post.createdAt', 'DESC');
         }
         queryBuilder
             .skip(skip)
@@ -531,13 +560,13 @@ export class PostService {
         }
         if (filters?.userInteractionType) {
             if (filters.userInteractionType === UserInteractionEnum.TheBest) {
-                queryBuilder.orderBy('post.likeCount', 'DESC');
+                orderByWithCurrentUserCityPriority('post.likeCount', 'DESC');
             }
             if (filters.userInteractionType === UserInteractionEnum.MyFaves) {
-                queryBuilder.orderBy('post.likeCount', 'DESC');
+                orderByWithCurrentUserCityPriority('post.likeCount', 'DESC');
             }
             if (filters.userInteractionType === UserInteractionEnum.Near) {
-                queryBuilder.orderBy('distance_km', 'ASC');
+                orderByWithCurrentUserCityPriority('distance_km', 'ASC');
                 queryBuilder.addOrderBy('post.createdAt', 'DESC');
             }
             if (filters.userInteractionType === UserInteractionEnum.Ghosts) {
@@ -1608,10 +1637,16 @@ export class PostService {
             [userId],
         );
 
+        const postShareUser = await this.userRepo.findOne({
+            where: {
+                id: userId,
+            }
+        })
+
         await this.notificationService.sendNotificationToUsers({
             userIds: [originalPost.userId, ...subscriberIds],
             title: NotificationOptions[NotificationTypeEnum.PostShare].title(),
-            body: NotificationOptions[NotificationTypeEnum.PostShare].body(),
+            body: NotificationOptions[NotificationTypeEnum.PostShare].body(postShareUser?.name),
             payload: NotificationOptions[NotificationTypeEnum.PostShare].payload({ postId: originalPostId }),
         });
 

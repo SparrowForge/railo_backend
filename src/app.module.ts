@@ -32,6 +32,7 @@ import { SubscriptionPackageModule } from './subscription-package/subscription-p
 import { PaymentsModule } from './payments/payments.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { StickerUploadModule } from './sticker-upload/sticker-upload.module';
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { StickerUploadModule } from './sticker-upload/sticker-upload.module';
     PaymentsModule,
     ModerationModule,
     StickerUploadModule,
+    EmailModule
   ],
   controllers: [AppController],
   providers: [
