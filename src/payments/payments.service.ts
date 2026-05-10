@@ -17,6 +17,9 @@ import { SubscriptionPaymentStatus } from './enums/subscription-payment-status.e
 import { UserSubscriptionStatus } from './enums/user-subscription-status.enum';
 import { InitiateSubscriptionPaymentDto } from './dto/initiate-subscription-payment.dto';
 import { MyFatoorahService } from './myfatoorah.service';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
+import { FilterPaymentRecordDto } from './dto/filter-payment-record.dto';
+import { PaginatedResponseDto } from 'src/common/dto/paginated-response.dto';
 
 @Injectable()
 export class PaymentsService {
@@ -93,6 +96,54 @@ export class PaymentsService {
 
     return savedPaymentRecord;
   }
+
+
+
+  async findAll(
+    paginationDto: PaginationDto,
+    filters?: Partial<FilterPaymentRecordDto>,
+  ): Promise<PaginatedResponseDto<PaymentRecords>> {
+    const { page = 1, limit = 1000000000000 } = paginationDto;
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = this.paymentRecordsRepository
+      .createQueryBuilder('records')
+      .leftJoinAndSelect('records.user', 'user')
+      .skip(skip)
+      .take(limit)
+      .orderBy('user.name', 'DESC');
+
+    // Apply filter if phone no avl
+    if (filters?.userId) {
+      queryBuilder.andWhere('records.user_id = :user_id', {
+        user_id: filters.userId,
+      });
+    }
+    if (filters?.subscription_package_id) {
+      queryBuilder.andWhere('records.subscription_package_id = :subscription_package_id', {
+        subscription_package_id: filters.subscription_package_id,
+      });
+    }
+
+    const [items, total] = await queryBuilder.getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
+    return {
+      items,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage,
+      },
+    };
+  }
+
 
   async initiateSubscriptionPayment(
     userId: string,

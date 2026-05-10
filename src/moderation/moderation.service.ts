@@ -337,6 +337,14 @@ export class ModerationService {
     return this.getCaseDetail(moderationCase);
   }
 
+  async deleteCase(caseId: string) {
+    // const moderationCase = await this.moderationCaseRepository.findOne({
+    //   where: { id: caseId },
+    // })
+    await this.moderationActionRepository.delete({ caseId: caseId })
+    await this.moderationCaseRepository.delete({ id: caseId })
+  }
+
   async claimCase(caseId: string, moderatorUserId: string) {
     const moderationCase = await this.getCaseOrFail(caseId);
 

@@ -239,6 +239,16 @@ export class PostController {
         return new BaseResponseDto(res, 'Post reported successfully');
     }
 
+    @Delete(':reportId/report/delete')
+    @ApiOperation({ summary: 'Report a post', description: 'Report a post with one or more predefined criteria.' })
+    @ApiResponse({ status: 200, description: 'Post reported successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Post not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async reportDelete(@CurrentUser() user: AuthUser, @Param('reportId') reportId: string) {
+        const res = await this.postService.reportDelete(reportId);
+        return new BaseResponseDto(res, 'Report deleted successfully');
+    }
+
     @Post(':id/hide')
     @ApiOperation({ summary: 'Hide a post', description: 'Hide a post.' })
     @ApiResponse({ status: 200, description: 'Post Hide successfully', type: BaseResponseDto<any>, })

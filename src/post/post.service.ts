@@ -1398,6 +1398,18 @@ export class PostService {
         return result;
     }
 
+    async reportDelete(reportId: string) {
+        const report = await this.postReportRepo.find({
+            where: { id: reportId },
+            relations: ['post']
+        })
+        if (!report) {
+            throw new NotFoundException('Report not found');
+        }
+        await this.postReportCriteriaRepo.delete({ reportId });
+        await this.postReportRepo.delete({ id: reportId });
+    }
+
     async hidePost(postId: string, userId: string) {
         const post = await this.postRepo.findOne({
             where: {

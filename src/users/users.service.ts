@@ -133,6 +133,88 @@ export class UsersService {
     };
   }
 
+  async findAllDeletedAccount(
+    paginationDto: PaginationDto,
+    filters?: Partial<FilterUserDto>,
+  ): Promise<PaginatedResponseDto<any>> {
+    const { page = 1, limit = 1000000000000 } = paginationDto;
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = this.deleteAccountRepository
+      .createQueryBuilder('account')
+      .leftJoinAndSelect('account.users', 'user')
+      .skip(skip)
+      .take(limit)
+      .orderBy('user.name', 'DESC');
+
+    // Apply filter if phone no avl
+    if (filters?.phone_no) {
+      queryBuilder.andWhere('user.phone_no = :phone_no', {
+        phone_no: filters.phone_no,
+      });
+    }
+
+    // Apply status filter if provided
+    if (filters?.status) {
+      queryBuilder.andWhere('user.status = :status', {
+        status: filters.status,
+      });
+    }
+
+    // Apply role filter if provided
+    if (filters?.role) {
+      queryBuilder.andWhere('user.role = :role', {
+        role: filters.role,
+      });
+    }
+
+    // Apply email filter if provided
+    if (filters?.email) {
+      queryBuilder.andWhere('user.email = :email', {
+        email: filters.email,
+      });
+    }
+
+    // Apply name filter if provided
+    if (filters?.name) {
+      queryBuilder.andWhere('user.name ILIKE :name', {
+        name: filters.name,
+      });
+    }
+
+
+    const [items, total] = await queryBuilder.getManyAndCount();
+
+    const totalPages = Math.ceil(total / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+
+    const res = items.map(item => ({
+      ...item.users,
+      reason: {
+        id: item.id,
+        user_id: item.user_id,
+        is_irrelevant_content: item.is_irrelevant_content,
+        is_negative_community: item.is_negative_community,
+        is_no_activity: item.is_no_activity,
+        is_too_time_consuming: item.is_too_time_consuming,
+        is_other: item.is_other,
+      }
+    }))
+
+    return {
+      items: res,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage,
+        hasPreviousPage,
+      },
+    };
+  }
+
   async findOne(id: string) {
     const user = await this.userRepository.findOne({
       where: { id },

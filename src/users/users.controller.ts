@@ -100,6 +100,16 @@ export class UsersController {
     return new BaseResponseDto(users, 'Users retrieved successfully');
   }
 
+  @Get('deleted-accounts-reason')
+  @ApiOperation({ summary: 'Get all users with pagination and filters', description: 'Retrieves a paginated list of all active users with optional filtering by role, department, and search terms. Requires authentication.', })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+  async findAllDeletedAccounts(@Query() filters: FilterUserDto) {
+    const { page, limit, ...userFilters } = filters;
+    const pagination = { page, limit };
+    const users = await this.usersService.findAllDeletedAccount(pagination, userFilters);
+    return new BaseResponseDto(users, 'Users retrieved successfully');
+  }
+
   @Get('locations')
   @ApiOperation({
     summary: 'Get nearest user locations',

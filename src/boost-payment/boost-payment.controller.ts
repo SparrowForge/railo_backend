@@ -27,6 +27,14 @@ import { BoostPaymentService } from './boost-payment.service';
 export class BoostPaymentController {
   constructor(private readonly boostPaymentService: BoostPaymentService) { }
 
+  @Get()
+  @ApiOperation({ summary: 'Download invoice PDF for a boost payment record' })
+  @ApiResponse({ status: 200, description: 'Boost invoice PDF downloaded successfully' })
+  async findAll() {
+    const result = await this.boostPaymentService.findAll();
+    return new BaseResponseDto(result, 'Boost record retrive successfully');
+  }
+
   @Get('records/:recordId/invoice')
   @ApiOperation({ summary: 'Download invoice PDF for a boost payment record' })
   @ApiResponse({ status: 200, description: 'Boost invoice PDF downloaded successfully' })

@@ -6,6 +6,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Res,
 } from '@nestjs/common';
 import {
@@ -23,12 +24,21 @@ import { CreatePaymentRecordDto } from './dto/create-payment-record.dto';
 import { InitiateSubscriptionPaymentDto } from './dto/initiate-subscription-payment.dto';
 import { PaymentsService } from './payments.service';
 import { MyFatoorahWebhookDto } from './dto/myfatoorah-webhook.dto';
+import { FilterPaymentRecordDto } from './dto/filter-payment-record.dto';
 
 @ApiTags('Payments')
 @ApiBearerAuth()
 @Controller('api/v1/payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) { }
+
+  @Get()
+  async findAll(@Query() filters: FilterPaymentRecordDto) {
+    const { page, limit, ...userFilters } = filters;
+    const pagination = { page, limit };
+    const users = await this.paymentsService.findAll(pagination, userFilters);
+    return new BaseResponseDto(users, 'Users retrieved successfully');
+  }
 
   @Post('subscription-package/:packageId/records')
   @ApiOperation({ summary: 'Save a payment record for the current user' })
