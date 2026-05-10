@@ -11,10 +11,14 @@ export class GoogleAuthService {
 
     async verifyGoogleIdToken(idToken: string) {
         try {
+            console.log('idToken: ', idToken);
+            console.log('GOOGLE_CLIENT_ID: ', process.env.GOOGLE_CLIENT_ID);
+
             const ticket = await this.client.verifyIdToken({
                 idToken,
                 audience: process.env.GOOGLE_CLIENT_ID,
             });
+
 
             const payload = ticket.getPayload();
 

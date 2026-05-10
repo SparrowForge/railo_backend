@@ -161,9 +161,12 @@ export class AuthController {
   async googleMobileLogin(@Body() body: { idToken: string }) {
     try {
       const userInfo = await this.googleAuthService.verifyGoogleIdToken(body.idToken);
+      console.log('Google user info:', userInfo);
 
       // 1) find user by email
       const user = await this.usersService.findByEmailOrPhoneNumberOrUserName(userInfo.email);
+      console.log('User:', user);
+
 
       // 2) create user if not exists
       if (!user) {
