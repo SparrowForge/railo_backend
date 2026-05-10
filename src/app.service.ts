@@ -56,11 +56,11 @@ import { ModerationAction } from './moderation/entities/moderation-action.entity
 import { ModerationRequest } from './moderation/entities/moderation-request.entity';
 import { PaymentRecords } from './payments/entities/payments-record.entity';
 import { StickerUpload } from './sticker-upload/entities/sticker-upload.entity';
+import { Country } from './country/entities/country.entity';
 
 @Injectable()
-
 export class AppService implements TypeOrmOptionsFactory {
-  constructor(private configService: ConfigService) { }
+  constructor(private configService: ConfigService) {}
 
   createTypeOrmOptions(): TypeOrmModuleOptions {
     const isDevelopment = this.configService.get('NODE_ENV') === 'development';
@@ -127,7 +127,8 @@ export class AppService implements TypeOrmOptionsFactory {
         ModerationCase,
         ModerationAction,
         ModerationRequest,
-        StickerUpload
+        StickerUpload,
+        Country,
       ],
       synchronize: false, // Never use synchronize in production
       logging: isDevelopment,
@@ -145,8 +146,8 @@ export class AppService implements TypeOrmOptionsFactory {
       ssl:
         this.configService.get('DB_SSL_ENABLED') === 'true'
           ? {
-            rejectUnauthorized: false,
-          }
+              rejectUnauthorized: false,
+            }
           : false,
       // Retry configuration
       retryAttempts: 10,
@@ -154,4 +155,3 @@ export class AppService implements TypeOrmOptionsFactory {
     };
   }
 }
-

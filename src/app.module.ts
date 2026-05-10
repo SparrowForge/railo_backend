@@ -33,6 +33,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { StickerUploadModule } from './sticker-upload/sticker-upload.module';
 import { EmailModule } from './email/email.module';
+import { CountryModule } from './country/country.module';
 
 @Module({
   imports: [
@@ -69,7 +70,8 @@ import { EmailModule } from './email/email.module';
     PaymentsModule,
     ModerationModule,
     StickerUploadModule,
-    EmailModule
+    CountryModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [
@@ -85,4 +87,4 @@ import { EmailModule } from './email/email.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}
