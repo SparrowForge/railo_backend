@@ -1440,6 +1440,46 @@ export class PostService {
         await this.postReportRepo.delete({ id: reportId });
     }
 
+    async getPostReports(postId: string) {
+        const post = await this.postRepo.findOne({
+            where: {
+                id: postId,
+            },
+        });
+
+        if (!post) {
+            throw new NotFoundException('Post not found');
+        }
+
+        const reports = await this.postReportRepo.find({
+            where: { postId },
+            relations: ['criteriaRows'],
+        });
+
+        const criteriaRows = reports.flatMap((report) => report.criteriaRows ?? []);
+        const postReports = criteriaRows.reduce<{ criteria: PostReportCriteriaEnum; count: number }[]>(
+            (acc, curr) => {
+                const existing = acc.find((item) => item.criteria === curr.criteria);
+
+                if (existing) {
+                    existing.count++;
+                } else {
+                    acc.push({ criteria: curr.criteria, count: 1 });
+                }
+
+                return acc;
+            },
+            [],
+        );
+
+        return {
+            postId,
+            totalReports: reports.length,
+            postReports,
+            reports
+        };
+    }
+
     async hidePost(postId: string, userId: string) {
         const post = await this.postRepo.findOne({
             where: {

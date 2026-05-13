@@ -249,6 +249,16 @@ export class PostController {
         return new BaseResponseDto(res, 'Report deleted successfully');
     }
 
+    @Get(':postId/reports')
+    @ApiOperation({ summary: 'Get post report summary', description: 'Get report counts grouped by criteria for a post.' })
+    @ApiResponse({ status: 200, description: 'Post reports retrieved successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Post not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async getPostReports(@Param('postId') postId: string) {
+        const res = await this.postService.getPostReports(postId);
+        return new BaseResponseDto(res, 'Post reports retrieved successfully');
+    }
+
     @Post(':id/hide')
     @ApiOperation({ summary: 'Hide a post', description: 'Hide a post.' })
     @ApiResponse({ status: 200, description: 'Post Hide successfully', type: BaseResponseDto<any>, })
