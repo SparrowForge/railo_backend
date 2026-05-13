@@ -12,6 +12,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { ChatReport } from '../chat/entities/chat-report.entity';
+import { CommentReport } from '../comments/entities/comment-report.entity';
+import { Comments } from '../comments/entities/comment.entity';
 import { Conversation } from '../conversation/entities/conversation.entity';
 import { PostReport } from '../post/entities/post-report.entity';
 import { Posts } from '../post/entities/post.entity';
@@ -48,11 +50,17 @@ export class ModerationService {
     @InjectRepository(Conversation)
     private readonly conversationRepository: Repository<Conversation>,
 
+    @InjectRepository(Comments)
+    private readonly commentRepository: Repository<Comments>,
+
     @InjectRepository(PostReport)
     private readonly postReportRepository: Repository<PostReport>,
 
     @InjectRepository(ChatReport)
     private readonly chatReportRepository: Repository<ChatReport>,
+
+    @InjectRepository(CommentReport)
+    private readonly commentReportRepository: Repository<CommentReport>,
 
     @InjectRepository(ModerationCase)
     private readonly moderationCaseRepository: Repository<ModerationCase>,
@@ -279,6 +287,37 @@ export class ModerationService {
     );
   }
 
+  async recordCommentReport(commentId: string): Promise<ModerationCase> {
+    const comment = await this.commentRepository.findOne({
+      where: { id: commentId },
+      select: ['id'],
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    return this.upsertCommentCase(
+      ModerationTargetTypeEnum.comment,
+      commentId,
+      async () => {
+        const reportCount = await this.commentReportRepository.count({
+          where: { commentId },
+        });
+
+        const latestReport = await this.commentReportRepository.findOne({
+          where: { commentId },
+          order: { createdAt: 'DESC' },
+        });
+
+        return {
+          reportCount,
+          lastReportedAt: latestReport?.createdAt ?? new Date(),
+        };
+      },
+    );
+  }
+
   async listCases(filters: {
     page?: number;
     limit?: number;
@@ -293,6 +332,7 @@ export class ModerationService {
       .createQueryBuilder('case')
       .leftJoinAndSelect('case.post', 'post')
       .leftJoinAndSelect('case.conversation', 'conversation')
+      .leftJoinAndSelect('case.postComments', 'postComments')
       .leftJoinAndSelect('post.user', 'user')
       .orderBy('case.lastReportedAt', 'DESC', 'NULLS LAST')
       .addOrderBy('case.updatedAt', 'DESC');
@@ -410,7 +450,7 @@ export class ModerationService {
         case ModerationActionTypeEnum.lock_conversation:
           this.ensureTargetType(currentCase, ModerationTargetTypeEnum.conversation, actionType);
           await conversationRepo.update(
-            { id: currentCase.postId },
+            { id: currentCase.conversationId },
             {
               is_moderation_locked: true,
               moderation_locked_by: moderatorUserId,
@@ -424,7 +464,7 @@ export class ModerationService {
         case ModerationActionTypeEnum.unlock_conversation:
           this.ensureTargetType(currentCase, ModerationTargetTypeEnum.conversation, actionType);
           await conversationRepo.update(
-            { id: currentCase.postId },
+            { id: currentCase.conversationId },
             {
               is_moderation_locked: false,
               moderation_locked_by: null,
@@ -552,6 +592,32 @@ export class ModerationService {
     return this.moderationCaseRepository.save(moderationCase);
   }
 
+  private async upsertCommentCase(
+    targetType: ModerationTargetTypeEnum,
+    commentId: string,
+    snapshotFactory: () => Promise<{ reportCount: number; lastReportedAt: Date }>,
+  ) {
+    const moderationCase =
+      (await this.moderationCaseRepository.findOne({
+        where: { targetType, postCommentsId: commentId },
+      })) ?? this.moderationCaseRepository.create({ targetType, postCommentsId: commentId });
+
+    const snapshot = await snapshotFactory();
+    moderationCase.reportCount = snapshot.reportCount;
+    moderationCase.lastReportedAt = snapshot.lastReportedAt;
+
+    if (
+      moderationCase.status === ModerationCaseStatusEnum.resolved ||
+      moderationCase.status === ModerationCaseStatusEnum.dismissed ||
+      moderationCase.status === ModerationCaseStatusEnum.escalated
+    ) {
+      moderationCase.status = ModerationCaseStatusEnum.open;
+      moderationCase.reviewedAt = null;
+    }
+
+    return this.moderationCaseRepository.save(moderationCase);
+  }
+
   private async enrichCase(moderationCase: ModerationCase) {
     const detail = await this.getCaseDetail(moderationCase);
     return {
@@ -597,8 +663,54 @@ export class ModerationService {
       };
     }
 
+    if (moderationCase.targetType === ModerationTargetTypeEnum.comment) {
+      const reports = await this.commentReportRepository.find({
+        where: { commentId: moderationCase.postCommentsId },
+        relations: {
+          user: { file: true },
+          criteriaRows: true,
+          comment: { user: { file: true }, file: true },
+        },
+        order: { createdAt: 'DESC' },
+      });
+
+      const comment =
+        reports[0]?.comment ??
+        (await this.commentRepository.findOne({
+          where: { id: moderationCase.postCommentsId },
+          relations: {
+            user: { file: true },
+            file: true,
+          },
+        }));
+
+      return {
+        case: moderationCase,
+        actions,
+        reports: reports.map((report) => this.mapCommentEvidence(report)),
+        targetSummary: comment
+          ? {
+            type: 'comment',
+            id: comment.id,
+            postId: comment.postId,
+            parentId: comment.parentId,
+            text: comment.text,
+            fileUrl: comment.file?.public_url ?? null,
+            author: comment.user
+              ? {
+                id: comment.user.id,
+                name: comment.user.name,
+                userName: comment.user.user_name,
+                fileUrl: comment.user.file?.public_url ?? null,
+              }
+              : null,
+          }
+          : null,
+      };
+    }
+
     const reports = await this.chatReportRepository.find({
-      where: { conversationId: moderationCase.postId },
+      where: { conversationId: moderationCase.conversationId },
       relations: {
         loggedInUser: { file: true },
         criteriaRows: true,
@@ -615,7 +727,7 @@ export class ModerationService {
     const conversation =
       reports[0]?.conversation ??
       (await this.conversationRepository.findOne({
-        where: { id: moderationCase.postId },
+        where: { id: moderationCase.conversationId },
         relations: {
           participants: {
             user: { file: true },
@@ -671,6 +783,22 @@ export class ModerationService {
           name: report.loggedInUser.name,
           userName: report.loggedInUser.user_name,
           fileUrl: report.loggedInUser.file?.public_url ?? null,
+        }
+        : null,
+      criteria: (report.criteriaRows ?? []).map((row) => row.criteria),
+    };
+  }
+
+  private mapCommentEvidence(report: CommentReport): ModerationEvidence {
+    return {
+      id: report.id,
+      createdAt: report.createdAt,
+      reporter: report.user
+        ? {
+          id: report.user.id,
+          name: report.user.name,
+          userName: report.user.user_name,
+          fileUrl: report.user.file?.public_url ?? null,
         }
         : null,
       criteria: (report.criteriaRows ?? []).map((row) => row.criteria),

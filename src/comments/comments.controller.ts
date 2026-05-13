@@ -12,6 +12,7 @@ import { FilterCommentDto } from './dto/filter-comments.dto';
 import { UpdateCommentsDto } from './dto/UpdateComments.Dto';
 import { ReplyCommentDto } from './dto/reply-comment.dto';
 import { FilterCommentRepliyDto } from './dto/filter-comments-replies.dto';
+import { CreateCommentReportDto } from './dto/create-comment-report.dto';
 
 @ApiTags('Post Comments')
 @ApiBearerAuth()
@@ -104,6 +105,36 @@ export class CommentsController {
     async toggleLike(@CurrentUser() user: AuthUser, @Param('id') id: string) {
         await this.commentService.toggleCommentLike(id, user.userId);
         return new BaseResponseDto(null, 'Post like toogled successfully');
+    }
+
+    @Post(':id/report')
+    @ApiOperation({ summary: 'Report a comment', description: 'Report a comment with one or more predefined criteria.' })
+    @ApiResponse({ status: 200, description: 'Comment reported successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Comment not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async reportComment(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() createCommentReportDto: CreateCommentReportDto) {
+        const res = await this.commentService.reportComment(id, user.userId, createCommentReportDto);
+        return new BaseResponseDto(res, 'Comment reported successfully');
+    }
+
+    @Delete(':reportId/report/delete')
+    @ApiOperation({ summary: 'Delete a comment report', description: 'Delete a comment report.' })
+    @ApiResponse({ status: 200, description: 'Comment report deleted successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Comment report not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async reportDelete(@CurrentUser() user: AuthUser, @Param('reportId') reportId: string) {
+        const res = await this.commentService.reportDelete(reportId);
+        return new BaseResponseDto(res, 'Report deleted successfully');
+    }
+
+    @Get(':commentId/reports')
+    @ApiOperation({ summary: 'Get comment report summary', description: 'Get report counts grouped by criteria for a comment.' })
+    @ApiResponse({ status: 200, description: 'Comment reports retrieved successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Comment not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async getCommentReports(@Param('commentId') commentId: string) {
+        const res = await this.commentService.getCommentReports(commentId);
+        return new BaseResponseDto(res, 'Comment reports retrieved successfully');
     }
 
 

@@ -1,0 +1,8 @@
+export enum CommentReportCriteriaEnum {
+    TERRORISM = 'TERRORISM',
+    HARASSMENT = 'HARASSMENT',
+    HATE_SPEECH = 'HATE_SPEECH',
+    SPAM = 'SPAM',
+    IMPERSONATION = 'IMPERSONATION',
+    VIOLENCE = 'VIOLENCE',
+}

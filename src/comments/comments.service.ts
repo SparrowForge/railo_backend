@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { DataSource, IsNull, Repository } from 'typeorm';
 import { Comments } from './entities/comment.entity';
 import { CommentLike } from './entities/comment-like.entity';
 import { Posts } from 'src/post/entities/post.entity';
@@ -11,10 +11,17 @@ import { NotificationService } from 'src/notifications/notifications.service';
 import { NotificationTypeEnum } from '../notifications/data/notification-type.enum';
 import { NotificationOptions } from '../notifications/data/notification-options';
 import { UpdateCommentsDto } from './dto/UpdateComments.Dto';
+import { CommentReport } from './entities/comment-report.entity';
+import { CommentReportCriteria } from './entities/comment-report-criteria.entity';
+import { CreateCommentReportDto } from './dto/create-comment-report.dto';
+import { ModerationService } from 'src/moderation/moderation.service';
+import { CommentReportCriteriaEnum } from './dto/comment-report-criteria.enum';
 
 @Injectable()
 export class CommentService {
     constructor(
+        private readonly dataSource: DataSource,
+
         @InjectRepository(Posts)
         private readonly postRepo: Repository<Posts>,
 
@@ -24,7 +31,15 @@ export class CommentService {
         @InjectRepository(CommentLike)
         private readonly commentLikeRepo: Repository<CommentLike>,
 
+        @InjectRepository(CommentReport)
+        private readonly commentReportRepo: Repository<CommentReport>,
+
+        @InjectRepository(CommentReportCriteria)
+        private readonly commentReportCriteriaRepo: Repository<CommentReportCriteria>,
+
         private readonly notificationService: NotificationService,
+
+        private readonly moderationService: ModerationService,
     ) { }
 
     async addComment(userId: string, { postId, text, parentId, file_id }: CommentDto) {
@@ -270,6 +285,111 @@ export class CommentService {
         );
 
         return { liked: true };
+    }
+
+    async reportComment(commentId: string, userId: string, dto: CreateCommentReportDto) {
+        const comment = await this.commentRepo.findOne({
+            where: {
+                id: commentId,
+            },
+        });
+
+        if (!comment) {
+            throw new NotFoundException('Comment not found');
+        }
+
+        const uniqueCriteria = [...new Set(dto.criteria)];
+
+        const result = await this.dataSource.transaction(async (manager) => {
+            const reportRepo = manager.getRepository(CommentReport);
+            const reportCriteriaRepo = manager.getRepository(CommentReportCriteria);
+
+            let report = await reportRepo.findOne({
+                where: { commentId, userId },
+            });
+
+            if (!report) {
+                report = reportRepo.create({
+                    commentId,
+                    userId,
+                });
+            }
+
+            report = await reportRepo.save(report);
+
+            await reportCriteriaRepo.delete({ reportId: report.id });
+
+            const criteriaRows = reportCriteriaRepo.create(
+                uniqueCriteria.map((criteria) => ({
+                    reportId: report.id,
+                    criteria,
+                })),
+            );
+
+            await reportCriteriaRepo.save(criteriaRows);
+
+            return {
+                commentId,
+                reported: true,
+                criteria: uniqueCriteria,
+            };
+        });
+
+        await this.moderationService.recordCommentReport(commentId);
+
+        return result;
+    }
+
+    async reportDelete(reportId: string) {
+        const report = await this.commentReportRepo.findOne({
+            where: { id: reportId },
+            relations: ['comment']
+        })
+        if (!report) {
+            throw new NotFoundException('Report not found');
+        }
+        await this.commentReportCriteriaRepo.delete({ reportId });
+        await this.commentReportRepo.delete({ id: reportId });
+    }
+
+    async getCommentReports(commentId: string) {
+        const comment = await this.commentRepo.findOne({
+            where: {
+                id: commentId,
+            },
+        });
+
+        if (!comment) {
+            throw new NotFoundException('Comment not found');
+        }
+
+        const reports = await this.commentReportRepo.find({
+            where: { commentId },
+            relations: ['criteriaRows'],
+        });
+
+        const criteriaRows = reports.flatMap((report) => report.criteriaRows ?? []);
+        const commentReports = criteriaRows.reduce<{ criteria: CommentReportCriteriaEnum; count: number }[]>(
+            (acc, curr) => {
+                const existing = acc.find((item) => item.criteria === curr.criteria);
+
+                if (existing) {
+                    existing.count++;
+                } else {
+                    acc.push({ criteria: curr.criteria, count: 1 });
+                }
+
+                return acc;
+            },
+            [],
+        );
+
+        return {
+            commentId,
+            totalReports: reports.length,
+            commentReports,
+            reports
+        };
     }
 
 }

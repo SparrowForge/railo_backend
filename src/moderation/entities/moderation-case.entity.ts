@@ -15,9 +15,10 @@ import { ModerationTargetTypeEnum } from '../enums/moderation-target-type.enum';
 import { ModerationAction } from './moderation-action.entity';
 import { Posts } from 'src/post/entities/post.entity';
 import { Conversation } from 'src/conversation/entities/conversation.entity';
+import { Comments } from 'src/comments/entities/comment.entity';
 
 @Entity('rillo_moderation_cases')
-@Unique(['targetType', 'postId','conversationId'])
+@Unique(['targetType', 'postId', 'conversationId'])
 @Index(['status', 'lastReportedAt'])
 export class ModerationCase {
   @PrimaryGeneratedColumn('uuid')
@@ -31,6 +32,9 @@ export class ModerationCase {
 
   @Column({ type: 'uuid', nullable: true })
   conversationId: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  postCommentsId: string;
 
   @Column({ type: 'enum', enum: ModerationCaseStatusEnum, default: ModerationCaseStatusEnum.open })
   status: ModerationCaseStatusEnum;
@@ -53,7 +57,7 @@ export class ModerationCase {
   @OneToMany(() => ModerationAction, (action) => action.case)
   actions: ModerationAction[];
 
-  
+  /*Relations */
   @ManyToOne(() => Posts, { nullable: true })
   @JoinColumn({ name: 'postId' })
   post: Posts;
@@ -61,5 +65,9 @@ export class ModerationCase {
   @ManyToOne(() => Conversation, { nullable: true })
   @JoinColumn({ name: 'conversationId' })
   conversation: Conversation;
+
+  @ManyToOne(() => Comments, { nullable: true })
+  @JoinColumn({ name: 'postCommentsId' })
+  postComments: Comments;
 }
 
