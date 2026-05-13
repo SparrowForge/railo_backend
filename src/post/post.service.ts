@@ -460,9 +460,10 @@ export class PostService {
                     LIMIT 1
                 )`,
             )
-            .where('post.visibility = :visibility', {
-                visibility: PostVisibilityEnum.NORMAL,
-            })
+            // .where('post.visibility = :visibility', {
+            //     visibility: PostVisibilityEnum.NORMAL,
+            // })
+            .where('1=1')
             .andWhere('post.deletedAt IS NULL');
 
         if (shouldPrioritizeCurrentUserCity) {
