@@ -16,6 +16,7 @@ import { CommentReportCriteria } from './entities/comment-report-criteria.entity
 import { CreateCommentReportDto } from './dto/create-comment-report.dto';
 import { ModerationService } from 'src/moderation/moderation.service';
 import { CommentReportCriteriaEnum } from './dto/comment-report-criteria.enum';
+import { CommentHide } from './entities/comment-hide.entity';
 
 @Injectable()
 export class CommentService {
@@ -36,6 +37,9 @@ export class CommentService {
 
         @InjectRepository(CommentReportCriteria)
         private readonly commentReportCriteriaRepo: Repository<CommentReportCriteria>,
+
+        @InjectRepository(CommentHide)
+        private readonly commentHideRepo: Repository<CommentHide>,
 
         private readonly notificationService: NotificationService,
 
@@ -105,26 +109,32 @@ export class CommentService {
 
     async getPostComments(
         paginationDto: PaginationDto,
-        postId: string
+        postId: string,
+        userId: string,
     ) {
         const page = Math.max(1, paginationDto.page ?? 1);
         const limit = Math.min(paginationDto.limit ?? 20, 50);
         const skip = (page - 1) * limit;
 
         const [items, total] =
-            await this.commentRepo.findAndCount({
-                where: {
-                    postId,
-                    parentId: IsNull(),
-                    // deletedAt: IsNull(),
-                },
-                order: {
-                    createdAt: 'ASC', // Facebook-style
-                },
-                relations: ['user', 'user.file', 'file'],
-                take: limit,
-                skip: skip,
-            });
+            await this.commentRepo
+                .createQueryBuilder('comment')
+                .leftJoinAndSelect('comment.user', 'user')
+                .leftJoinAndSelect('user.file', 'userFile')
+                .leftJoinAndSelect('comment.file', 'file')
+                .leftJoin(
+                    CommentHide,
+                    'commentHide',
+                    'commentHide.commentId = comment.id AND commentHide.userId = :userId',
+                    { userId },
+                )
+                .where('comment.postId = :postId', { postId })
+                .andWhere('comment.parentId IS NULL')
+                .andWhere('commentHide.id IS NULL')
+                .orderBy('comment.createdAt', 'ASC')
+                .take(limit)
+                .skip(skip)
+                .getManyAndCount();
         const totalPages = Math.ceil(total / limit);
         return {
             items,
@@ -139,11 +149,21 @@ export class CommentService {
         };
     }
 
-    async getCommentsById(id: string) {
-        return await this.commentRepo.findAndCount({
-            where: { id },
-            relations: ['user', 'user.file', 'file']
-        });
+    async getCommentsById(id: string, userId: string) {
+        return await this.commentRepo
+            .createQueryBuilder('comment')
+            .leftJoinAndSelect('comment.user', 'user')
+            .leftJoinAndSelect('user.file', 'userFile')
+            .leftJoinAndSelect('comment.file', 'file')
+            .leftJoin(
+                CommentHide,
+                'commentHide',
+                'commentHide.commentId = comment.id AND commentHide.userId = :userId',
+                { userId },
+            )
+            .where('comment.id = :id', { id })
+            .andWhere('commentHide.id IS NULL')
+            .getManyAndCount();
     }
 
     async softDelete(commentId: string) {
@@ -227,22 +247,30 @@ export class CommentService {
 
     async getCommentReplies(
         paginationDto: PaginationDto,
-        parentCommentId: string
+        parentCommentId: string,
+        userId: string,
     ) {
         const page = Math.max(1, paginationDto.page ?? 1);
         const limit = Math.min(paginationDto.limit ?? 20, 50);
         const skip = (page - 1) * limit;
         const [items, total] =
-            await this.commentRepo.findAndCount({
-                where: {
-                    parentId: parentCommentId,
-                    deletedAt: IsNull(),
-                },
-                relations: ['user', 'user.file', 'file'],
-                order: { createdAt: 'ASC' },
-                take: limit,
-                skip: skip,
-            });
+            await this.commentRepo
+                .createQueryBuilder('comment')
+                .leftJoinAndSelect('comment.user', 'user')
+                .leftJoinAndSelect('user.file', 'userFile')
+                .leftJoinAndSelect('comment.file', 'file')
+                .leftJoin(
+                    CommentHide,
+                    'commentHide',
+                    'commentHide.commentId = comment.id AND commentHide.userId = :userId',
+                    { userId },
+                )
+                .where('comment.parentId = :parentCommentId', { parentCommentId })
+                .andWhere('commentHide.id IS NULL')
+                .orderBy('comment.createdAt', 'ASC')
+                .take(limit)
+                .skip(skip)
+                .getManyAndCount();
 
         const totalPages = Math.ceil(total / limit);
         return {
@@ -285,6 +313,41 @@ export class CommentService {
         );
 
         return { liked: true };
+    }
+
+    async hideComment(commentId: string, userId: string) {
+        const comment = await this.commentRepo.findOne({
+            where: {
+                id: commentId,
+            },
+        });
+
+        if (!comment) {
+            throw new NotFoundException('Comment not found');
+        }
+
+        await this.commentHideRepo.delete({ commentId, userId });
+
+        const entity = this.commentHideRepo.create({
+            commentId,
+            userId,
+        });
+
+        return await this.commentHideRepo.save(entity);
+    }
+
+    async unhideComment(commentId: string, userId: string) {
+        const comment = await this.commentRepo.findOne({
+            where: {
+                id: commentId,
+            },
+        });
+
+        if (!comment) {
+            throw new NotFoundException('Comment not found');
+        }
+
+        return await this.commentHideRepo.delete({ commentId, userId });
     }
 
     async reportComment(commentId: string, userId: string, dto: CreateCommentReportDto) {

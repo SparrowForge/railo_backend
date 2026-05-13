@@ -46,18 +46,18 @@ export class CommentsController {
     @Get('get-post-comments')
     @ApiOperation({ summary: 'Get all post with pagination and filters', description: 'Retrieves a paginated list of all active post with optional filtering by role, department, and search terms. Requires authentication.', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
-    async getPostList(@Query() filters: FilterCommentDto) {
+    async getPostList(@CurrentUser() user: AuthUser, @Query() filters: FilterCommentDto) {
         const { page, limit } = filters;
         const pagination = { page, limit };
-        const post = await this.commentService.getPostComments(pagination, filters.postId);
+        const post = await this.commentService.getPostComments(pagination, filters.postId, user.userId);
         return new BaseResponseDto(post, 'Post root comments retrieved successfully');
     }
 
     @Get('get-comments-by-id/:id')
     @ApiOperation({ summary: 'Get all post with pagination and filters', description: 'Retrieves a paginated list of all active post with optional filtering by role, department, and search terms. Requires authentication.', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
-    async getCommentsById(@Param('id') id: string,) {
-        const post = await this.commentService.getCommentsById(id);
+    async getCommentsById(@CurrentUser() user: AuthUser, @Param('id') id: string,) {
+        const post = await this.commentService.getCommentsById(id, user.userId);
         return new BaseResponseDto(post, 'Post root comments retrieved successfully');
     }
 
@@ -107,6 +107,26 @@ export class CommentsController {
         return new BaseResponseDto(null, 'Post like toogled successfully');
     }
 
+    @Post(':id/hide')
+    @ApiOperation({ summary: 'Hide a comment', description: 'Hide a comment for the current user only.' })
+    @ApiResponse({ status: 200, description: 'Comment hide successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Comment not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async hideComment(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+        const res = await this.commentService.hideComment(id, user.userId);
+        return new BaseResponseDto(res, 'Comment hide successfully');
+    }
+
+    @Post(':id/unhide')
+    @ApiOperation({ summary: 'Unhide a comment', description: 'Unhide a comment for the current user.' })
+    @ApiResponse({ status: 200, description: 'Comment unhide successfully', type: BaseResponseDto<any>, })
+    @ApiResponse({ status: 404, description: 'Comment not found', })
+    @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
+    async unhideComment(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+        const res = await this.commentService.unhideComment(id, user.userId);
+        return new BaseResponseDto(res, 'Comment unhide successfully');
+    }
+
     @Post(':id/report')
     @ApiOperation({ summary: 'Report a comment', description: 'Report a comment with one or more predefined criteria.' })
     @ApiResponse({ status: 200, description: 'Comment reported successfully', type: BaseResponseDto<any>, })
@@ -153,10 +173,10 @@ export class CommentsController {
     @Get('get-comments-replies')
     @ApiOperation({ summary: 'Get all post with pagination and filters', description: 'Retrieves a paginated list of all active post with optional filtering by role, department, and search terms. Requires authentication.', })
     @ApiResponse({ status: 401, description: 'Unauthorized - Authentication required', })
-    async getCommentReplies(@Query() filters: FilterCommentRepliyDto) {
+    async getCommentReplies(@CurrentUser() user: AuthUser, @Query() filters: FilterCommentRepliyDto) {
         const { page, limit } = filters;
         const pagination = { page, limit };
-        const post = await this.commentService.getCommentReplies(pagination, filters.parentCommentId);
+        const post = await this.commentService.getCommentReplies(pagination, filters.parentCommentId, user.userId);
         return new BaseResponseDto(post, 'Post root comments retrieved successfully');
     }
 

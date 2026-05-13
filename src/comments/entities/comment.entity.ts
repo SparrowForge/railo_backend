@@ -1,6 +1,7 @@
 import { Files } from "src/files/entities/file.entity";
 import { User } from "src/users/entities/user.entity";
 import { Entity, Index, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn, DeleteDateColumn } from "typeorm";
+import { CommentHide } from "./comment-hide.entity";
 
 @Entity('rillo_comments')
 @Index(['postId', 'createdAt'])
@@ -54,4 +55,7 @@ export class Comments {
     @ManyToOne(() => Files, { nullable: true })
     @JoinColumn({ name: 'file_id' })
     file: Files;
+
+    @OneToMany(() => CommentHide, (_) => _.comment)
+    hides: CommentHide[];
 }

@@ -12,6 +12,7 @@ import { Comments } from './comments/entities/comment.entity';
 import { CommentLike } from './comments/entities/comment-like.entity';
 import { CommentReport } from './comments/entities/comment-report.entity';
 import { CommentReportCriteria } from './comments/entities/comment-report-criteria.entity';
+import { CommentHide } from './comments/entities/comment-hide.entity';
 import { ChatRequest } from './chat-request/entities/chat-request.entity';
 import { Conversation } from './conversation/entities/conversation.entity';
 import { ConversationParticipant } from './conversation/entities/conversation-participant.entity';
@@ -86,6 +87,7 @@ export class AppService implements TypeOrmOptionsFactory {
         CommentLike,
         CommentReport,
         CommentReportCriteria,
+        CommentHide,
         ChatRequest,
         ChatReport,
         ChatReportCriteria,
