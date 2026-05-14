@@ -18,6 +18,7 @@ import { ModerationRequestsController } from './moderation-requests.controller';
 import { ModerationService } from './moderation.service';
 import { ModerationUserGuard } from './guards/moderation-user.guard';
 import { Comments } from 'src/comments/entities/comment.entity';
+import { ModerationPointThreshold } from './entities/moderation-point-threshold.entity';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { Comments } from 'src/comments/entities/comment.entity';
       ModerationCase,
       ModerationAction,
       ModerationRequest,
+      ModerationPointThreshold,
     ]),
     forwardRef(() => PostModule),
   ],

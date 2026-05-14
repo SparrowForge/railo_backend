@@ -31,5 +31,10 @@ export const NotificationOptions:
         title: (context?: string) => context ?? 'Post shared',
         body: (context?: string) => `Post shared by ${context ?? ''}`,
         payload: (record?: Record<string, string>) => ({ type: 'post', ...record }),
-    }
+    },
+    [NotificationTypeEnum.ChatRequest]: {
+        title: (context?: string) => context ?? 'Chat Request',
+        body: (context?: string) => `New chat request from ${context ?? ''}`,
+        payload: (record?: Record<string, string>) => ({ type: 'chat_request', ...record }),
+    },
 }

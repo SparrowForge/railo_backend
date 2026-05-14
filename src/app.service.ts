@@ -60,6 +60,7 @@ import { ModerationRequest } from './moderation/entities/moderation-request.enti
 import { PaymentRecords } from './payments/entities/payments-record.entity';
 import { StickerUpload } from './sticker-upload/entities/sticker-upload.entity';
 import { Country } from './country/entities/country.entity';
+import { ModerationPointThreshold } from './moderation/entities/moderation-point-threshold.entity';
 
 @Injectable()
 export class AppService implements TypeOrmOptionsFactory {
@@ -135,6 +136,7 @@ export class AppService implements TypeOrmOptionsFactory {
         ModerationRequest,
         StickerUpload,
         Country,
+        ModerationPointThreshold,
       ],
       synchronize: false, // Never use synchronize in production
       logging: isDevelopment,

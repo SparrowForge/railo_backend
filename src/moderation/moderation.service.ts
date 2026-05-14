@@ -10,7 +10,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, Not, Repository } from 'typeorm';
 import { ChatReport } from '../chat/entities/chat-report.entity';
 import { CommentReport } from '../comments/entities/comment-report.entity';
 import { Comments } from '../comments/entities/comment.entity';
@@ -26,6 +26,7 @@ import { ModerationRequestStatusEnum } from './enums/moderation-request-status.e
 import { ModerationTargetTypeEnum } from './enums/moderation-target-type.enum';
 import { User } from '../users/entities/user.entity';
 import { PostService } from 'src/post/post.service';
+import { ModerationPointThreshold } from './entities/moderation-point-threshold.entity';
 
 type ModerationEvidence = {
   id: string;
@@ -73,6 +74,9 @@ export class ModerationService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    @InjectRepository(ModerationPointThreshold)
+    private readonly moderationPointThresholdRepository: Repository<ModerationPointThreshold>,
 
     @Inject(forwardRef(() => PostService))
     private readonly postService: PostService,
@@ -502,7 +506,10 @@ export class ModerationService {
   }
 
   async getStatus() {
-    const [statusRows, targetTypeRows, actionRows, totalCases] = await Promise.all([
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [statusRows, targetTypeRows, actionRows, totalCases, todayCasedSolved] = await Promise.all([
       this.moderationCaseRepository
         .createQueryBuilder('case')
         .select('case.status', 'status')
@@ -522,10 +529,16 @@ export class ModerationService {
         .groupBy('action.actionType')
         .getRawMany<{ actionType: ModerationActionTypeEnum; count: string }>(),
       this.moderationCaseRepository.count(),
+      this.moderationCaseRepository
+        .createQueryBuilder('case')
+        .where('case.reviewedAt >= :today', { today })
+        .andWhere('case.status = :status or case.status = :status2', { status: ModerationCaseStatusEnum.resolved, status2: ModerationCaseStatusEnum.dismissed })
+        .getCount(),
     ]);
 
     return {
       totalCases,
+      todayCasedSolved,
       statusBreakdown: statusRows.map((row) => ({
         status: row.status,
         count: Number(row.count),
@@ -827,5 +840,49 @@ export class ModerationService {
         `${actionType} is only valid for ${expectedType} cases`,
       );
     }
+  }
+  public async setModerationPointThreshold(points: number, createdById: string) {
+    await this.moderationPointThresholdRepository.delete({ id: Not(IsNull()) });
+    return await this.moderationPointThresholdRepository.save(
+      this.moderationPointThresholdRepository.create({
+        points,
+        createdById,
+      }),);
+  }
+
+  public async getUserModerationPoints(userId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'is_moderation_user'],
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const userTotalPosts = await this.postRepository.count({ where: { userId } });
+    const userTotalReportsOnPostsResult = await this.postReportRepository
+      .createQueryBuilder('report')
+      .leftJoin('report.post', 'post')
+      .select('COUNT(DISTINCT post.id)', 'total')
+      .where('post.userId = :userId', { userId })
+      .getRawOne();
+
+    const userTotalReportsOnPosts = Number(userTotalReportsOnPostsResult.total);
+
+    const moderationPointsResult = await this.moderationPointThresholdRepository
+      .createQueryBuilder('threshold')
+      .select('SUM(threshold.points)', 'totalPoints')
+      .getRawOne<{ totalPoints: string }>();
+
+    const thresholdPoints = Number(moderationPointsResult?.totalPoints) || 0;
+
+    return {
+      userId: user.id,
+      isModerationUser: thresholdPoints == 0 ? false : ((userTotalPosts - userTotalReportsOnPosts) >= thresholdPoints),
+      totalPosts: userTotalPosts,
+      totalReportsOnPosts: userTotalReportsOnPosts,
+      totalThresholdPoints: thresholdPoints,
+      moderationPoint: userTotalPosts - userTotalReportsOnPosts
+    };
   }
 }

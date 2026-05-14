@@ -34,6 +34,9 @@ import { ChatReportCriteria } from './entities/chat-report-criteria.entity';
 import { UserChattHide } from './entities/user-chat-hide.entity';
 import { ConversationPin } from './entities/conversation-pin.entity';
 import { ModerationService } from 'src/moderation/moderation.service';
+import { NotificationService } from '../notifications/notifications.service';
+import { NotificationTypeEnum } from '../notifications/data/notification-type.enum';
+import { NotificationOptions } from 'src/notifications/data/notification-options';
 
 @Injectable()
 export class ChatService {
@@ -74,6 +77,8 @@ export class ChatService {
 
         private readonly userPresenceService: UserPresenceService,
         private readonly moderationService: ModerationService,
+
+        private readonly notificationService: NotificationService,
     ) { }
 
     async send_message(dto: SendMessageDto, user_id: string) {
@@ -728,6 +733,15 @@ export class ChatService {
                 receiver_id,
                 status: chat_request_status.pending,
                 conversation_id: conversation.id,
+            });
+
+            //send chat request notification to user
+            const sender = await this.userRepo.findOneBy({ id: user_id });
+            await this.notificationService.sendNotificationToUsers({
+                userIds: [receiver_id],
+                title: NotificationOptions[NotificationTypeEnum.ChatRequest].title(),
+                body: NotificationOptions[NotificationTypeEnum.ChatRequest].body(sender?.name),
+                payload: NotificationOptions[NotificationTypeEnum.ChatRequest].payload({conversation_id: conversation.id, sender_id: user_id }),
             });
         }
 

@@ -3,5 +3,6 @@ export enum NotificationTypeEnum {
     PostLike = "PostLike",
     PostShare = "PostShare",
     PostComment = "PostComment",
+    ChatRequest = "ChatRequest",
     NewMessage = "NewMessage"
 }

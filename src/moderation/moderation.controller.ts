@@ -64,4 +64,18 @@ export class ModerationController {
     const data = await this.moderationService.getStatus();
     return new BaseResponseDto(data, 'Moderation stats retrieved successfully');
   }
+
+  @Get('user-moderation-points/:userId')
+  @ApiOperation({ summary: 'Get user moderation points' })
+  async getUserModerationPoints(@Param('userId') userId: string) {
+    const data = await this.moderationService.getUserModerationPoints(userId);
+    return new BaseResponseDto(data, 'User moderation points retrieved successfully');
+  }
+
+  @Post('set-threshold-points')
+  @ApiOperation({ summary: 'Set moderation point threshold' })
+  async setModerationPointThreshold(@Body() { points }: { points: number }, @CurrentUser() user: AuthUser) {
+    const data = await this.moderationService.setModerationPointThreshold(points, user.userId);
+    return new BaseResponseDto(data, 'Moderation point threshold set successfully');
+  }
 }
