@@ -10,10 +10,11 @@ import { CommentReport } from './entities/comment-report.entity';
 import { CommentReportCriteria } from './entities/comment-report-criteria.entity';
 import { ModerationModule } from 'src/moderation/moderation.module';
 import { CommentHide } from './entities/comment-hide.entity';
+import { User } from 'src/users/entities/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Posts, Comments, CommentLike, CommentReport, CommentReportCriteria, CommentHide]),
+    TypeOrmModule.forFeature([Posts, User, Comments, CommentLike, CommentReport, CommentReportCriteria, CommentHide]),
     NotificationsModule,
     forwardRef(() => ModerationModule),
   ],

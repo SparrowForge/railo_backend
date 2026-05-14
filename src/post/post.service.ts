@@ -1098,10 +1098,14 @@ export class PostService {
             [userId],
         );
 
+        const likedByUser = await this.userRepo.findOne({
+            where: { id: userId },
+        });
+
         await this.notificationService.sendNotificationToUsers({
             userIds: [post.userId, ...subscriberIds],
             title: NotificationOptions[NotificationTypeEnum.PostLike].title(),
-            body: NotificationOptions[NotificationTypeEnum.PostLike].body(),
+            body: NotificationOptions[NotificationTypeEnum.PostLike].body(likedByUser?.name),
             payload: NotificationOptions[NotificationTypeEnum.PostLike].payload({ postId: postId }),
         });
 

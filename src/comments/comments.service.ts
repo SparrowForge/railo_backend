@@ -17,6 +17,7 @@ import { CreateCommentReportDto } from './dto/create-comment-report.dto';
 import { ModerationService } from 'src/moderation/moderation.service';
 import { CommentReportCriteriaEnum } from './dto/comment-report-criteria.enum';
 import { CommentHide } from './entities/comment-hide.entity';
+import { User } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class CommentService {
@@ -40,6 +41,9 @@ export class CommentService {
 
         @InjectRepository(CommentHide)
         private readonly commentHideRepo: Repository<CommentHide>,
+
+        @InjectRepository(User)
+        private readonly userRepo: Repository<User>,
 
         private readonly notificationService: NotificationService,
 
@@ -77,12 +81,12 @@ export class CommentService {
                     postId,
                     [userId],
                 );
-
+            const postShareUser = await this.userRepo.findOneBy({ id: userId });
             await this.notificationService.sendNotificationToUsers({
                 userIds: [post.userId, ...subscriberIds],
                 title: NotificationOptions[NotificationTypeEnum.PostComment].title(),
-                body: NotificationOptions[NotificationTypeEnum.PostComment].body(),
-                payload: NotificationOptions[NotificationTypeEnum.PostComment].payload(),
+                body: NotificationOptions[NotificationTypeEnum.PostComment].body(postShareUser?.name),
+                payload: NotificationOptions[NotificationTypeEnum.PostComment].payload({ postId }),
             });
         }
 
