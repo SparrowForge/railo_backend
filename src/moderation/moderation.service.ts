@@ -858,6 +858,7 @@ export class ModerationService {
 
   public async getModerationPointThreshold() {
     const threshold = await this.moderationPointThresholdRepository.findOne({
+      where: { id: Not(IsNull()) },
       order: { createdAt: 'DESC' },
     });
     return threshold;
