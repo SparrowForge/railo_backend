@@ -509,7 +509,7 @@ export class ModerationService {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [statusRows, targetTypeRows, actionRows, totalCases, todayCasedSolved] = await Promise.all([
+    const [statusRows, targetTypeRows, actionRows, totalCases, todayCasedSolvedToday, todayCasedSolved] = await Promise.all([
       this.moderationCaseRepository
         .createQueryBuilder('case')
         .select('case.status', 'status')
@@ -534,11 +534,17 @@ export class ModerationService {
         .where('case.reviewedAt >= :today', { today })
         .andWhere('case.status = :status or case.status = :status2', { status: ModerationCaseStatusEnum.resolved, status2: ModerationCaseStatusEnum.dismissed })
         .getCount(),
+      this.moderationCaseRepository
+        .createQueryBuilder('case')
+        .andWhere('case.status = :status or case.status = :status2', { status: ModerationCaseStatusEnum.resolved, status2: ModerationCaseStatusEnum.dismissed })
+        .getCount(),
     ]);
 
     return {
       totalCases,
       todayCasedSolved,
+      todayCasedSolvedToday,
+      pending: totalCases - (todayCasedSolved),
       statusBreakdown: statusRows.map((row) => ({
         status: row.status,
         count: Number(row.count),
@@ -850,6 +856,13 @@ export class ModerationService {
       }),);
   }
 
+  public async getModerationPointThreshold() {
+    const threshold = await this.moderationPointThresholdRepository.findOne({
+      order: { createdAt: 'DESC' },
+    });
+    return threshold;
+  }
+
   public async getUserModerationPoints(userId: string) {
     const user = await this.userRepository.findOne({
       where: { id: userId },
@@ -881,8 +894,8 @@ export class ModerationService {
       isModerationUser: thresholdPoints == 0 ? false : ((userTotalPosts - userTotalReportsOnPosts) >= thresholdPoints),
       totalPosts: userTotalPosts,
       totalReportsOnPosts: userTotalReportsOnPosts,
-      totalThresholdPoints: thresholdPoints,
-      moderationPoint: userTotalPosts - userTotalReportsOnPosts
+      thresholdPoints: thresholdPoints,
+      userModerationPoint: userTotalPosts - userTotalReportsOnPosts
     };
   }
 }
