@@ -889,10 +889,20 @@ export class ModerationService {
       .getRawOne<{ totalPoints: string }>();
 
     const thresholdPoints = Number(moderationPointsResult?.totalPoints) || 0;
+    const isModerationUser = thresholdPoints == 0 ? false : ((userTotalPosts - userTotalReportsOnPosts) >= thresholdPoints);
 
+    //update user moderation status based on points and threshold
+    if (thresholdPoints > 0) {
+      if (isModerationUser && !user.is_moderation_user) {
+        await this.userRepository.update({ id: userId }, { is_moderation_user: true });
+      } else if (!isModerationUser && user.is_moderation_user) {
+        await this.userRepository.update({ id: userId }, { is_moderation_user: false });
+      }
+    }
+    
     return {
       userId: user.id,
-      isModerationUser: thresholdPoints == 0 ? false : ((userTotalPosts - userTotalReportsOnPosts) >= thresholdPoints),
+      isModerationUser,
       totalPosts: userTotalPosts,
       totalReportsOnPosts: userTotalReportsOnPosts,
       thresholdPoints: thresholdPoints,

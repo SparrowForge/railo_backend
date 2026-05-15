@@ -10,12 +10,12 @@ import { ModerationService } from './moderation.service';
 
 @ApiTags('Moderation')
 @ApiBearerAuth()
-@UseGuards(ModerationUserGuard)
 @Controller('api/v1/moderation')
 export class ModerationController {
   constructor(private readonly moderationService: ModerationService) { }
 
   @Get('cases')
+  // @UseGuards(ModerationUserGuard)
   @ApiOperation({ summary: 'List moderation cases' })
   async listCases(@Query() filters: FilterModerationCaseDto) {
     const { page, limit, ...rest } = filters;
@@ -29,6 +29,7 @@ export class ModerationController {
   }
 
   @Get('cases/:id')
+  // @UseGuards(ModerationUserGuard)
   @ApiOperation({ summary: 'Get a moderation case with evidence' })
   async getCase(@Param('id') id: string) {
     const data = await this.moderationService.getCase(id);
@@ -36,6 +37,7 @@ export class ModerationController {
   }
 
   @Post('cases/:id/claim')
+  // @UseGuards(ModerationUserGuard)
   @ApiOperation({ summary: 'Claim a moderation case for review' })
   async claimCase(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     const data = await this.moderationService.claimCase(id, user.userId);
@@ -43,6 +45,7 @@ export class ModerationController {
   }
 
   @Post('cases/:id/actions')
+  // @UseGuards(ModerationUserGuard)
   @ApiOperation({ summary: 'Apply a moderation action' })
   async performAction(
     @CurrentUser() user: AuthUser,
@@ -78,11 +81,11 @@ export class ModerationController {
     const data = await this.moderationService.setModerationPointThreshold(points, user.userId);
     return new BaseResponseDto(data, 'Moderation point threshold set successfully');
   }
-  
+
   @Get('get-threshold-points')
   @ApiOperation({ summary: 'Get moderation point threshold' })
   async getModerationPointThreshold() {
-     const data = await this.moderationService.getModerationPointThreshold();
+    const data = await this.moderationService.getModerationPointThreshold();
     return new BaseResponseDto(data, 'Moderation point threshold set successfully');
   }
 }
