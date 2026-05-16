@@ -4,6 +4,7 @@ import { Public } from 'src/common/decorators/public.decorator';
 
 import { BaseResponseDto } from '../common/dto/base-response.dto';
 import { CreateUserDto } from '../users/dto/create-user.dto';
+import { Gender } from '../users/enum/gender.enum';
 import { AuthService } from './auth.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
@@ -180,7 +181,7 @@ export class AuthController {
           display_name: userInfo.name!,
           phone_no: '+0991',
           date_of_birth: new Date(),
-          gender: 'male'
+          gender: Gender.male,
         });
         console.log('New user created:', newUser);
         return await this.authService.login(userInfo.email, hashedPassword);
