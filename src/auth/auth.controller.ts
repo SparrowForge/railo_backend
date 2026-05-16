@@ -179,7 +179,8 @@ export class AuthController {
           user_name: userInfo.name!,
           display_name: userInfo.name!,
           phone_no: '+0991',
-          date_of_birth: new Date()
+          date_of_birth: new Date(),
+          gender: 'male'
         });
         console.log('New user created:', newUser);
         return await this.authService.login(userInfo.email, hashedPassword);
