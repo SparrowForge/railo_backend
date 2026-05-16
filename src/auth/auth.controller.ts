@@ -178,7 +178,8 @@ export class AuthController {
           role: RolesEnum.user,
           user_name: userInfo.name!,
           display_name: userInfo.name!,
-          phone_no: '+0991'
+          phone_no: '+0991',
+          date_of_birth: new Date()
         });
         console.log('New user created:', newUser);
         return await this.authService.login(userInfo.email, hashedPassword);
@@ -228,7 +229,8 @@ export class AuthController {
           created_by: '',
           user_name: '',
           display_name: 'Apple User',
-          phone_no: '+0991'
+          phone_no: '+0991',
+          date_of_birth: new Date()
         });
 
         console.log('New Apple user created:', newUser);
